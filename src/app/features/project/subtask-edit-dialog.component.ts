@@ -1,15 +1,17 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { firstValueFrom } from 'rxjs';
 import { TaskService } from '../../services/task.service';
 import { ConfirmService } from '../../services/confirm.service';
-import { Task, Subtask } from '../../shared/models';
+import { Task, Subtask, SubtaskStatus, SUBTASK_STATUS_OPTIONS } from '../../shared/models';
+import { CompletionNoteDialogComponent, CompletionNoteDialogData, CompletionNoteDialogResult } from './completion-note-dialog.component';
 
 export interface SubtaskEditDialogData {
   task: Task;
@@ -54,8 +56,9 @@ export interface SubtaskEditDialogData {
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Trạng thái</mat-label>
               <mat-select [(ngModel)]="form.status">
-                <mat-option value="todo">Todo</mat-option>
-                <mat-option value="done">Done</mat-option>
+                @for (opt of statusOptions; track opt.status) {
+                  <mat-option [value]="opt.status">{{ opt.label }}</mat-option>
+                }
               </mat-select>
             </mat-form-field>
           </div>
@@ -103,6 +106,7 @@ export interface SubtaskEditDialogData {
 export class SubtaskEditDialogComponent {
   readonly data = inject(MAT_DIALOG_DATA) as SubtaskEditDialogData;
   private dialogRef = inject(MatDialogRef<SubtaskEditDialogComponent>);
+  private dialog = inject(MatDialog);
   private taskSvc = inject(TaskService);
   private snackBar = inject(MatSnackBar);
   private confirmSvc = inject(ConfirmService);
@@ -112,12 +116,13 @@ export class SubtaskEditDialogComponent {
 
   saving = false;
   deleting = false;
+  statusOptions = SUBTASK_STATUS_OPTIONS;
   form = {
     title: '',
     description: '' as string | null,
     assignees: [] as string[],
     estimateMin: 0,
-    status: 'todo' as 'todo' | 'done'
+    status: 'todo' as SubtaskStatus
   };
 
   constructor() {
@@ -131,6 +136,18 @@ export class SubtaskEditDialogComponent {
 
   async save(): Promise<void> {
     if (!this.form.title.trim()) return;
+    let completionNote: string | null = null;
+    if (this.form.status === 'done') {
+      const dialogData: CompletionNoteDialogData = {
+        type: 'subtask',
+        title: this.form.title || this.data.subtask.title,
+        initialNote: this.data.subtask.completion_note ?? undefined
+      };
+      const dialogRef = this.dialog.open(CompletionNoteDialogComponent, { width: '420px', data: dialogData });
+      const res = await firstValueFrom(dialogRef.afterClosed()) as CompletionNoteDialogResult | undefined;
+      if (res === undefined) return;
+      completionNote = res.note ?? null;
+    }
     this.saving = true;
     try {
       const s = this.data.subtask;
@@ -139,7 +156,8 @@ export class SubtaskEditDialogComponent {
         description: this.form.description || null,
         assignees: [...this.form.assignees],
         estimate_seconds: this.form.estimateMin * 60,
-        status: this.form.status
+        status: this.form.status,
+        completion_note: this.form.status === 'done' ? completionNote : null
       };
       const result = await this.taskSvc.updateSubtask(s.id, payload);
       if (result?.error) {

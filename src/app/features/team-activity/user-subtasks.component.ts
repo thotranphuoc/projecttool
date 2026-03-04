@@ -13,7 +13,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ProjectService } from '../../services/project.service';
 import { SupabaseService } from '../../core/supabase.service';
 import { SecondsToHmsPipe } from '../../shared/pipes/seconds-to-hms.pipe';
-import { Subtask } from '../../shared/models';
+import { Subtask, SUBTASK_STATUS_OPTIONS } from '../../shared/models';
 
 export interface UserSubtaskRow {
   projectId: string;
@@ -69,8 +69,9 @@ export interface UserSubtaskRow {
             <mat-label>Trạng thái</mat-label>
             <mat-select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); applyFilter()">
               <mat-option value="">Tất cả</mat-option>
-              <mat-option value="todo">Todo</mat-option>
-              <mat-option value="done">Done</mat-option>
+              @for (opt of statusOptions; track opt.status) {
+                <mat-option [value]="opt.status">{{ opt.label }}</mat-option>
+              }
             </mat-select>
           </mat-form-field>
           <button mat-stroked-button (click)="exportCsv()" [disabled]="rows().length === 0">
@@ -100,7 +101,7 @@ export interface UserSubtaskRow {
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Trạng thái</th>
             <td mat-cell *matCellDef="let row">
-              {{ row.subtask.status === 'done' ? 'Done' : 'Todo' }}
+              {{ statusLabel(row.subtask.status) }}
             </td>
           </ng-container>
           <ng-container matColumnDef="est">
@@ -178,6 +179,7 @@ export class UserSubtasksComponent implements OnInit {
   isLoading = signal(false);
   rows = signal<UserSubtaskRow[]>([]);
   displayedColumns = ['project', 'member', 'task', 'subtask', 'status', 'est', 'act', 'created_at', 'done_at', 'needsSupport', 'link'];
+  statusOptions = SUBTASK_STATUS_OPTIONS;
 
   readonly accessibleProjects = computed(() => {
     if (this.auth.isDirector()) return this.projectSvc.projects();
@@ -331,6 +333,10 @@ export class UserSubtasksComponent implements OnInit {
     }
   }
 
+  statusLabel(status: string): string {
+    return this.statusOptions.find(o => o.status === status)?.label ?? status;
+  }
+
   goToProject(projectId: string, _taskId: string, _subtaskId: string): void {
     this.router.navigate(['/project', projectId]);
   }
@@ -348,7 +354,7 @@ export class UserSubtasksComponent implements OnInit {
         escape(row.assigneeDisplay),
         escape(row.taskTitle),
         escape(row.subtask.title),
-        escape(row.subtask.status === 'done' ? 'Done' : 'Todo'),
+        escape(this.statusLabel(row.subtask.status)),
         row.subtask.estimate_seconds,
         row.subtask.actual_seconds,
         row.subtask.created_at,

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,8 +9,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ObjectiveService } from '../../services/objective.service';
+import { VisionStrategyService } from '../../services/vision-strategy.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Objective, KeyResult } from '../../shared/models';
+import { Objective, KeyResult, Strategy } from '../../shared/models';
 
 type KrDraft = Partial<KeyResult> & { _localId: number };
 
@@ -39,6 +40,44 @@ type KrDraft = Partial<KeyResult> & { _localId: number };
               <mat-option value="customer">Khách hàng</mat-option>
               <mat-option value="internal">Quy trình nội bộ</mat-option>
               <mat-option value="learning">Học hỏi & phát triển</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Chiến lược</mat-label>
+            <mat-select [(ngModel)]="form.strategy_id">
+              <mat-option [value]="null">Không chọn</mat-option>
+              @for (s of filteredStrategies(); track s.id) {
+                <mat-option [value]="s.id">
+                  {{ s.title }} ({{ s.period_quarter != null ? s.period_year + '-Q' + s.period_quarter : s.period_year }})
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Perspective (BSC)</mat-label>
+            <mat-select [(ngModel)]="form.perspective_id">
+              <mat-option [value]="null">Không chọn</mat-option>
+              @for (p of visionStrategySvc.perspectives(); track p.id) {
+                <mat-option [value]="p.id">{{ p.code }} – {{ p.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Chuỗi giá trị</mat-label>
+            <mat-select [(ngModel)]="form.value_chain_activity_id">
+              <mat-option [value]="null">Không chọn</mat-option>
+              @for (vca of visionStrategySvc.valueChainActivities(); track vca.id) {
+                <mat-option [value]="vca.id">{{ vca.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>KSF</mat-label>
+            <mat-select [(ngModel)]="form.ksf_id">
+              <mat-option [value]="null">Không chọn</mat-option>
+              @for (k of visionStrategySvc.ksfs(); track k.id) {
+                <mat-option [value]="k.id">{{ k.label }}</mat-option>
+              }
             </mat-select>
           </mat-form-field>
 
@@ -133,23 +172,57 @@ export class ObjectiveDialogComponent implements OnInit {
   readonly data     = inject(MAT_DIALOG_DATA) as { objective: Objective | null; projectId: string | null };
   private dialogRef = inject(MatDialogRef<ObjectiveDialogComponent>);
   private objSvc    = inject(ObjectiveService);
+  readonly visionStrategySvc = inject(VisionStrategyService);
   private auth      = inject(AuthService);
   private snackBar  = inject(MatSnackBar);
+  private cdr       = inject(ChangeDetectorRef);
 
   isSaving    = signal(false);
   keyResults  = signal<KrDraft[]>([]);
   private _nextLocalId = 0;
 
-  form = { title: '', description: '', type: 'financial' as any };
+  form: {
+    title: string;
+    description: string;
+    type: Objective['type'];
+    strategy_id?: string | null;
+    perspective_id?: string | null;
+    value_chain_activity_id?: string | null;
+    ksf_id?: string | null;
+  } = { title: '', description: '', type: 'financial' };
 
-  ngOnInit(): void {
-    if (this.data.objective) {
-      const o = this.data.objective;
-      this.form = { title: o.title, description: o.description ?? '', type: o.type };
+  readonly filteredStrategies = computed(() => {
+    const list = this.visionStrategySvc.strategies();
+    const pid = this.data.projectId;
+    return list.filter((s: Strategy) => s.project_id === null || s.project_id === pid);
+  });
+
+  async ngOnInit(): Promise<void> {
+    // Populate form and Key Results immediately so they show on open (OnPush)
+    const o = this.data.objective;
+    if (o) {
+      this.form = {
+        title: o.title,
+        description: o.description ?? '',
+        type: o.type,
+        strategy_id: o.strategy_id ?? null,
+        perspective_id: (o as any).perspective_id ?? null,
+        value_chain_activity_id: o.value_chain_activity_id ?? null,
+        ksf_id: o.ksf_id ?? null,
+      };
+      const krs = (o as any).key_results ?? [];
       this.keyResults.set(
-        (o.key_results ?? []).map(kr => ({ ...kr, _localId: this._nextLocalId++ }))
+        krs.map((kr: Partial<KeyResult>) => ({ ...kr, _localId: this._nextLocalId++ }))
       );
+      this.cdr.markForCheck();
     }
+    await Promise.all([
+      this.visionStrategySvc.loadAllStrategies(),
+      this.visionStrategySvc.loadPerspectives(),
+      this.visionStrategySvc.loadValueChainActivities(),
+      this.visionStrategySvc.loadKsfs(),
+    ]);
+    this.cdr.markForCheck();
   }
 
   addKR(): void {
@@ -167,7 +240,15 @@ export class ObjectiveDialogComponent implements OnInit {
     if (!this.form.title.trim()) return;
     this.isSaving.set(true);
     try {
-      const dto = { ...this.form, project_id: this.data.projectId, created_by: this.auth.userId() };
+      const dto = {
+        ...this.form,
+        project_id: this.data.projectId,
+        created_by: this.auth.userId(),
+        strategy_id: this.form.strategy_id ?? null,
+        perspective_id: this.form.perspective_id ?? null,
+        value_chain_activity_id: this.form.value_chain_activity_id ?? null,
+        ksf_id: this.form.ksf_id ?? null,
+      };
       if (this.data.objective) {
         await this.objSvc.updateObjective(this.data.objective.id, dto);
         for (const kr of this.keyResults()) {

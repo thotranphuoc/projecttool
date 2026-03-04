@@ -12,15 +12,16 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { TaskService } from '../../services/task.service';
 import { ProjectService } from '../../services/project.service';
 import { TimerService } from '../../services/timer.service';
 import { ConfirmService } from '../../services/confirm.service';
-import { Task, Subtask, TASK_COLUMNS, TaskStatus, TaskPriority } from '../../shared/models';
+import { Task, Subtask, TASK_COLUMNS, TaskStatus, TaskPriority, SubtaskStatus, SUBTASK_STATUS_OPTIONS } from '../../shared/models';
 import { SecondsToHmsPipe } from '../../shared/pipes/seconds-to-hms.pipe';
 import { SubtaskEditDialogComponent, SubtaskEditDialogData } from './subtask-edit-dialog.component';
+import { CompletionNoteDialogComponent, CompletionNoteDialogData, CompletionNoteDialogResult } from './completion-note-dialog.component';
 import { GanttComponent } from './gantt.component';
 import { TaskImportDialogComponent } from './task-import-dialog.component';
 
@@ -166,6 +167,12 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
                         <div class="subtask-progress">
                           <mat-progress-bar mode="determinate" [value]="subtaskPct(task)" class="subtask-bar" (click)="toggleExpand(task); $event.stopPropagation()" />
                           <span class="text-xs text-muted" (click)="toggleExpand(task); $event.stopPropagation()">{{ getEffectiveSubtaskCounts(task).completed }}/{{ getEffectiveSubtaskCounts(task).total }} subtasks</span>
+                          <button type="button" mat-icon-button class="add-subtask-inline-btn"
+                                  [class.active]="isSubtaskInputOpen(task.id)"
+                                  matTooltip="Thêm subtask"
+                                  (click)="toggleSubtaskInput(task, $event)">
+                            <mat-icon>add</mat-icon>
+                          </button>
                           <button type="button" mat-icon-button class="expand-btn" [matTooltip]="isTaskExpanded(task.id) ? 'Thu gọn' : 'Mở rộng'" (click)="toggleExpand(task); $event.stopPropagation()">
                             <mat-icon class="expand-btn-icon">{{ isTaskExpanded(task.id) ? 'expand_less' : 'expand_more' }}</mat-icon>
                           </button>
@@ -194,58 +201,84 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
                             }
                           }
                         </div>
+                        @if (task.status === 'done' && task.completion_note) {
+                          <div class="completion-note" (click)="$event.stopPropagation()">
+                            <mat-icon class="completion-note-icon">check_circle</mat-icon>
+                            <span class="completion-note-text">{{ task.completion_note }}</span>
+                          </div>
+                        }
                       </div>
                     </div>
                     @if (isTaskExpanded(task.id)) {
                       <div class="subtask-tree">
                         @for (subtask of getSubtasksForTask(task.id); track subtask.id) {
                           <div class="subtask-card" [class.done]="subtask.status === 'done'" (click)="$event.stopPropagation()" (dblclick)="openSubtaskEditDialog(task, subtask); $event.stopPropagation()">
-                            <div class="subtask-card-body">
-                              <span class="subtask-card-title">{{ subtask.title }}</span>
-                              <div class="subtask-card-meta">
-                                <span class="text-xs text-muted">Est: {{ subtask.estimate_seconds | secondsToHms }} · Act: {{ subtask.actual_seconds | secondsToHms }}</span>
-                                @if (subtask.due_date) {
-                                  <span class="text-xs text-muted">{{ subtask.due_date | date:'dd/MM' }}</span>
+                            <div class="subtask-card-main">
+                              <div class="subtask-card-body">
+                                <span class="subtask-card-title">{{ subtask.title }}</span>
+                                @if (subtask.status === 'done' && subtask.completion_note) {
+                                  <div class="subtask-completion-note">
+                                    <mat-icon class="completion-note-icon">check_circle</mat-icon>
+                                    <span class="completion-note-text">{{ subtask.completion_note }}</span>
+                                  </div>
                                 }
-                                @if (getSubtaskAssignees(subtask).length > 0) {
-                                  <span class="subtask-assignees">
-                                    @for (p of getSubtaskAssignees(subtask).slice(0, 3); track p.id) {
-                                      @if (p.photo_url) {
-                                        <img [src]="p.photo_url" class="subtask-avatar" [matTooltip]="p.display_name || ''" alt="" />
-                                      } @else {
-                                        <span class="subtask-avatar subtask-avatar-initial" [matTooltip]="p.display_name || ''">{{ (p.display_name || p.email || '?').charAt(0).toUpperCase() }}</span>
+                                <div class="subtask-card-meta">
+                                  <span class="text-xs text-muted">Est: {{ subtask.estimate_seconds | secondsToHms }} · Act: {{ subtask.actual_seconds | secondsToHms }}</span>
+                                  @if (subtask.due_date) {
+                                    <span class="text-xs text-muted">{{ subtask.due_date | date:'dd/MM' }}</span>
+                                  }
+                                  @if (getSubtaskAssignees(subtask).length > 0) {
+                                    <span class="subtask-assignees">
+                                      @for (p of getSubtaskAssignees(subtask).slice(0, 3); track p.id) {
+                                        @if (p.photo_url) {
+                                          <img [src]="p.photo_url" class="subtask-avatar" [matTooltip]="p.display_name || ''" alt="" />
+                                        } @else {
+                                          <span class="subtask-avatar subtask-avatar-initial" [matTooltip]="p.display_name || ''">{{ (p.display_name || p.email || '?').charAt(0).toUpperCase() }}</span>
+                                        }
                                       }
-                                    }
-                                  </span>
+                                    </span>
+                                  }
+                                </div>
+                              </div>
+                              <div class="subtask-card-actions">
+                                @if (timerSvc.activeTimer()?.subtaskId === subtask.id) {
+                                  <button mat-icon-button color="warn" (click)="stopTimer(); $event.stopPropagation()" matTooltip="Dừng"><mat-icon>stop_circle</mat-icon></button>
+                                } @else if (subtask.status !== 'done') {
+                                  <button mat-icon-button (click)="startSubtaskTimer(task, subtask); $event.stopPropagation()"
+                                    [disabled]="!canStartSubtaskTimer(subtask)"
+                                    [matTooltip]="subtaskTimerTooltip(subtask)"><mat-icon>play_circle</mat-icon></button>
                                 }
                               </div>
                             </div>
-                            <div class="subtask-card-actions">
-                              @if (timerSvc.activeTimer()?.subtaskId === subtask.id) {
-                                <button mat-icon-button color="warn" (click)="stopTimer(); $event.stopPropagation()" matTooltip="Dừng"><mat-icon>stop_circle</mat-icon></button>
-                              } @else {
-                                <button mat-icon-button (click)="startSubtaskTimer(task, subtask); $event.stopPropagation()"
-                                  [disabled]="!canStartSubtaskTimer(subtask)"
-                                  [matTooltip]="subtaskTimerTooltip(subtask)"><mat-icon>play_circle</mat-icon></button>
-                              }
+                            <div class="subtask-card-status-row" (click)="$event.stopPropagation()">
+                              <select class="subtask-status-native-select" [value]="subtask.status" (change)="onSubtaskStatusChange(task, subtask, $any($event.target).value)">
+                                @for (opt of subtaskStatusOptions; track opt.status) {
+                                  <option [value]="opt.status">{{ opt.label }}</option>
+                                }
+                              </select>
                             </div>
                           </div>
                         }
                       </div>
                     }
-                    <div class="task-add-subtask-row" (click)="$event.stopPropagation()">
-                      <input class="subtask-add-input" placeholder="Thêm subtask..." [ngModel]="newSubtaskTitles()[task.id] || ''" (ngModelChange)="setNewSubtaskTitle(task.id, $event)" />
-                      <button mat-icon-button (click)="addSubtaskInline(task)" [disabled]="!((newSubtaskTitles()[task.id] || '').trim())" matTooltip="Thêm">
-                        <mat-icon>add</mat-icon>
-                      </button>
-                    </div>
+                    @if (isSubtaskInputOpen(task.id)) {
+                      <div class="task-add-subtask-row" (click)="$event.stopPropagation()">
+                        <input class="subtask-add-input" placeholder="Thêm subtask..." [ngModel]="newSubtaskTitles()[task.id] || ''" (ngModelChange)="setNewSubtaskTitle(task.id, $event)"
+                               (keydown.enter)="addSubtaskInline(task)" (keydown.escape)="closeSubtaskInput(task.id, $event)" autofocus />
+                        <button mat-icon-button (click)="addSubtaskInline(task)" [disabled]="!((newSubtaskTitles()[task.id] || '').trim())" matTooltip="Thêm">
+                          <mat-icon>check</mat-icon>
+                        </button>
+                      </div>
+                    }
                   </div>
                 }
 
-                <!-- Add task shortcut -->
-                <button mat-button class="add-task-btn" (click)="openTaskDialog(null, col.status)">
-                  <mat-icon>add</mat-icon> Thêm task
-                </button>
+                <!-- Add task shortcut: chỉ hiện ở To Do và In Progress -->
+                @if (col.status === 'todo' || col.status === 'in_progress') {
+                  <button mat-button class="add-task-btn" (click)="openTaskDialog(null, col.status)">
+                    <mat-icon>add</mat-icon> Thêm task
+                  </button>
+                }
               </div>
             </div>
           }
@@ -322,21 +355,42 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
     .drag-handle:active { cursor: grabbing; }
     .expand-btn { width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; margin-left: 4px; display: inline-flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0; }
     .expand-btn .expand-btn-icon { font-size: 24px; width: 24px; height: 24px; pointer-events: none; }
+    .add-subtask-inline-btn { width: 28px !important; height: 28px !important; min-width: 28px !important; min-height: 28px !important; flex-shrink: 0; color: #94a3b8; transition: color 0.15s, background 0.15s; display: inline-flex !important; align-items: center !important; justify-content: center !important; align-self: center; }
+    .add-subtask-inline-btn mat-icon { font-size: 18px; width: 18px; height: 18px; line-height: 18px; }
+    .add-subtask-inline-btn:hover { color: #3b82f6; }
+    .add-subtask-inline-btn.active { color: #3b82f6; background: #eff6ff !important; border-radius: 6px; }
     .subtask-tree { contain: layout; min-height: 4px; }
-    .task-add-subtask-row { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-top: 1px solid #e2e8f0; background: #fafafa; margin: 0 -1px -1px -1px; border-radius: 0 0 10px 10px; }
+    .task-add-subtask-row { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-top: 1px solid #e2e8f0; background: #fafafa; margin: 10px -1px -1px -1px; border-radius: 0 0 10px 10px; }
     .subtask-tree { margin-left: 24px; margin-top: 8px; padding-left: 12px; border-left: 2px solid #e2e8f0; display: flex; flex-direction: column; gap: 6px; }
-    .subtask-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); cursor: pointer; }
+    .subtask-card { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); cursor: pointer; }
     .subtask-card.done { opacity: 0.7; }
     .subtask-card.done .subtask-card-title { text-decoration: line-through; }
-    .subtask-card-body { flex: 1; min-width: 0; padding-right: 8px; }
-    .subtask-card-title { font-size: 13px; font-weight: 500; color: #334155; }
-    .subtask-card-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; flex-wrap: wrap; }
+    .subtask-card-main { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+    .subtask-card-body { flex: 1; min-width: 0; padding-right: 4px; }
+    .subtask-card-title { font-size: 13px; font-weight: 500; color: #334155; display: block; }
+    .subtask-card-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
     .subtask-assignees { display: inline-flex; align-items: center; gap: 2px; }
     .subtask-avatar { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
     .subtask-avatar-initial { display: inline-flex; align-items: center; justify-content: center; background: #e2e8f0; color: #475569; font-size: 9px; font-weight: 600; }
-    .subtask-card-actions { display: flex; gap: 0; flex-shrink: 0; }
+    .subtask-card-actions { display: flex; gap: 0; flex-shrink: 0; align-items: center; }
+    .subtask-card-status-row { margin-top: 2px }
     .subtask-add-row { display: flex; align-items: center; gap: 4px; margin-top: 4px; padding: 4px 0; }
     .subtask-add-input { flex: 1; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px; }
+    .completion-note { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; padding: 8px 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 12px; color: #166534; }
+    .completion-note-icon { font-size: 16px; width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+    .completion-note-text { word-break: break-word; }
+    .subtask-completion-note { display: flex; align-items: flex-start; gap: 6px; margin-top: 4px; font-size: 11px; color: #15803d; }
+    .subtask-completion-note .completion-note-icon { font-size: 14px; width: 14px; height: 14px; }
+    .subtask-status-native-select {
+      appearance: none;
+      width: auto; min-width: 72px; max-width: 100px;
+      height: 22px; padding: 0 20px 0 6px;
+      font-size: 11px; font-weight: 500; color: #475569; line-height: 20px;
+      border: 1px solid #e2e8f0; border-radius: 4px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 4px center;
+      cursor: pointer; outline: none;
+    }
+    .subtask-status-native-select:hover { border-color: #cbd5e1; }
+    .subtask-status-native-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
   `]
 })
 export class ProjectComponent implements OnInit, OnDestroy {
@@ -349,15 +403,20 @@ export class ProjectComponent implements OnInit, OnDestroy {
   private dialog      = inject(MatDialog);
   private snackBar    = inject(MatSnackBar);
   private confirmSvc  = inject(ConfirmService);
+  private route       = inject(ActivatedRoute);
+  private router      = inject(Router);
 
   readonly columns     = TASK_COLUMNS;
   readonly connectedTo = TASK_COLUMNS.map(c => c.status);
+  readonly subtaskStatusOptions = SUBTASK_STATUS_OPTIONS;
 
   viewMode       = signal<'kanban' | 'gantt'>('kanban');
   priorityFilter = signal<TaskPriority | null>(null);
 
   /** Task IDs that are expanded to show subtask tree */
   expandedTaskIds = signal<Set<string>>(new Set());
+  /** Task IDs that have the inline add-subtask input open */
+  showingSubtaskInput = signal<Set<string>>(new Set());
   /** Cache: taskId -> Subtask[] */
   subtasksByTask = signal<Map<string, Subtask[]>>(new Map());
   /** Inline add subtask title by taskId */
@@ -372,9 +431,17 @@ export class ProjectComponent implements OnInit, OnDestroy {
     return pf ? this.taskSvc.tasks().filter(t => t.priority === pf) : this.taskSvc.tasks();
   });
 
-  ngOnInit(): void {
-    this.taskSvc.loadTasks(this.id());
+  async ngOnInit(): Promise<void> {
+    await this.taskSvc.loadTasks(this.id());
     if (!this.project()) this.projectSvc.loadProjects();
+    const openTaskId = this.route.snapshot.queryParamMap.get('openTask');
+    if (openTaskId) {
+      const task = await this.taskSvc.getTask(this.id(), openTaskId);
+      if (task) {
+        this.openTaskDialog(task);
+        this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
+      }
+    }
   }
 
   ngOnDestroy(): void { this.taskSvc.cleanup(); }
@@ -452,13 +519,56 @@ export class ProjectComponent implements OnInit, OnDestroy {
     }
   }
 
+  isSubtaskInputOpen(taskId: string): boolean {
+    return this.showingSubtaskInput().has(taskId);
+  }
+
+  closeSubtaskInput(taskId: string, event: Event): void {
+    event.stopPropagation();
+    this.showingSubtaskInput.update(s => { const next = new Set(s); next.delete(taskId); return next; });
+  }
+
+  async toggleSubtaskInput(task: Task, event: MouseEvent): Promise<void> {
+    event.stopPropagation();
+    const id = task.id;
+    const isOpen = this.showingSubtaskInput().has(id);
+    this.showingSubtaskInput.update(s => {
+      const next = new Set(s);
+      if (isOpen) next.delete(id); else next.add(id);
+      return next;
+    });
+    // Tự động expand để thấy subtask list khi mở input
+    if (!isOpen && !this.expandedTaskIds().has(id)) {
+      await this.toggleExpand(task);
+    }
+  }
+
   isTaskExpanded(taskId: string): boolean {
     return this.expandedTaskIds().has(taskId);
   }
 
-  async toggleSubtaskStatus(subtask: Subtask, done: boolean): Promise<void> {
-    const result = await this.taskSvc.updateSubtask(subtask.id, { status: done ? 'done' : 'todo' });
-    if (result?.error) {
+  /** Gọi khi đổi trạng thái subtask từ dropdown. Nếu chọn Done thì mở dialog completion note. */
+  onSubtaskStatusChange(task: Task, subtask: Subtask, newStatus: SubtaskStatus): void {
+    if (newStatus === 'done') {
+      this.openCompletionNoteForSubtask(task, subtask);
+      return;
+    }
+    this.setSubtaskStatus(subtask, newStatus, null);
+  }
+
+  openCompletionNoteForSubtask(task: Task, subtask: Subtask): void {
+    const data: CompletionNoteDialogData = { type: 'subtask', title: subtask.title };
+    this.dialog.open(CompletionNoteDialogComponent, { width: '420px', data })
+      .afterClosed()
+      .subscribe(async (result: CompletionNoteDialogResult | undefined) => {
+        if (result === undefined) return;
+        await this.setSubtaskStatus(subtask, 'done', result.note ?? null);
+      });
+  }
+
+  private async setSubtaskStatus(subtask: Subtask, status: SubtaskStatus, completionNote: string | null): Promise<void> {
+    const res = await this.taskSvc.updateSubtask(subtask.id, { status, completion_note: completionNote });
+    if (res?.error) {
       this.snackBar.open('Không thể đổi trạng thái subtask', 'Đóng', { duration: 2000 });
       return;
     }
@@ -467,10 +577,14 @@ export class ProjectComponent implements OnInit, OnDestroy {
       const next = new Map(m);
       const list = [...(next.get(parentId) ?? [])];
       const idx = list.findIndex(s => s.id === subtask.id);
-      if (idx >= 0) list[idx] = { ...list[idx], status: done ? 'done' : 'todo' };
+      if (idx >= 0) list[idx] = { ...list[idx], status, completion_note: completionNote };
       next.set(parentId, list);
       return next;
     });
+  }
+
+  async toggleSubtaskStatus(subtask: Subtask, done: boolean): Promise<void> {
+    await this.setSubtaskStatus(subtask, done ? 'done' : 'todo', null);
   }
 
   async deleteSubtaskFromTree(task: Task, subtask: Subtask): Promise<void> {
@@ -534,7 +648,8 @@ export class ProjectComponent implements OnInit, OnDestroy {
     const s = await this.taskSvc.createSubtask({
       parent_id: task.id, project_id: task.project_id,
       title, description: null, status: 'todo',
-      assignees: [], due_date: null, estimate_seconds: 30 * 60
+      assignees: [], due_date: null, estimate_seconds: 30 * 60,
+      completion_note: null
     });
     if (s) {
       this.subtasksByTask.update(m => {
@@ -544,6 +659,9 @@ export class ProjectComponent implements OnInit, OnDestroy {
         return next;
       });
       this.newSubtaskTitles.update(r => ({ ...r, [task.id]: '' }));
+      this.showingSubtaskInput.update(set => { const next = new Set(set); next.delete(task.id); return next; });
+    } else {
+      this.snackBar.open('Không thể thêm subtask. Vui lòng thử lại.', 'Đóng', { duration: 3000 });
     }
   }
 
@@ -596,13 +714,22 @@ export class ProjectComponent implements OnInit, OnDestroy {
         return;
       }
       transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
-      await this.taskSvc.updateStatus(task.id, targetStatus);
 
-      // Check if all subtasks done and task moved to done
-      const counts = this.getEffectiveSubtaskCounts(task);
-      if (targetStatus !== 'done' && counts.total > 0 && counts.completed === counts.total) {
-        const confirmed = await this.confirmSvc.open({ title: 'Đưa task vào Done?', message: `Tất cả subtasks của "${task.title}" đã hoàn thành. Đưa task vào Done?` });
-        if (confirmed) await this.taskSvc.updateStatus(task.id, 'done');
+      if (targetStatus === 'done') {
+        const data: CompletionNoteDialogData = { type: 'task', title: task.title };
+        this.dialog.open(CompletionNoteDialogComponent, { width: '420px', data })
+          .afterClosed()
+          .subscribe((result: CompletionNoteDialogResult | undefined) => {
+            if (result === undefined) return;
+            this.taskSvc.updateTask(task.id, { status: 'done', completion_note: result.note ?? null });
+          });
+      } else {
+        await this.taskSvc.updateStatus(task.id, targetStatus);
+        const counts = this.getEffectiveSubtaskCounts(task);
+        if (counts.total > 0 && counts.completed === counts.total) {
+          const confirmed = await this.confirmSvc.open({ title: 'Đưa task vào Done?', message: `Tất cả subtasks của "${task.title}" đã hoàn thành. Đưa task vào Done?` });
+          if (confirmed) await this.taskSvc.updateStatus(task.id, 'done');
+        }
       }
     }
   }

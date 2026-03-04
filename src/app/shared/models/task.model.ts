@@ -24,9 +24,14 @@ export interface Task {
   total_actual_seconds: number;
   /** Sum of current (non-deleted) subtasks' estimate_seconds. Roll-up from DB. */
   total_estimate_seconds: number;
+  /** Ghi chú kết quả / link file khi chuyển sang Done */
+  completion_note: string | null;
   created_at: string;
   updated_at: string;
 }
+
+/** Đồng bộ với task: todo → in_progress → review → done */
+export type SubtaskStatus = 'todo' | 'in_progress' | 'review' | 'done';
 
 export interface Subtask {
   id: string;
@@ -34,11 +39,13 @@ export interface Subtask {
   project_id: string;
   title: string;
   description: string | null;
-  status: 'todo' | 'done';
+  status: SubtaskStatus;
   assignees: string[];
   due_date: string | null;
   estimate_seconds: number;
   actual_seconds: number;
+  /** Ghi chú kết quả / link file khi chuyển sang Done */
+  completion_note: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -78,6 +85,13 @@ export interface CreateTaskDto {
 }
 
 export const TASK_COLUMNS: { status: TaskStatus; label: string }[] = [
+  { status: 'todo',        label: 'To Do' },
+  { status: 'in_progress', label: 'In Progress' },
+  { status: 'review',      label: 'Review' },
+  { status: 'done',        label: 'Done' },
+];
+
+export const SUBTASK_STATUS_OPTIONS: { status: SubtaskStatus; label: string }[] = [
   { status: 'todo',        label: 'To Do' },
   { status: 'in_progress', label: 'In Progress' },
   { status: 'review',      label: 'Review' },

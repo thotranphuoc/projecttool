@@ -1,6 +1,13 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
+const BSC_CONFIG: Record<string, { color: string; bg: string; border: string }> = {
+  financial: { color: '#166534', bg: '#f0fdf4', border: '#86efac' },
+  customer:  { color: '#1e40af', bg: '#eff6ff', border: '#93c5fd' },
+  internal:  { color: '#6b21a8', bg: '#faf5ff', border: '#d8b4fe' },
+  learning:  { color: '#9a3412', bg: '#fff7ed', border: '#fdba74' },
+};
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -35,7 +42,7 @@ import { Objective, KeyResult, BSC_TYPES, ObjectiveType } from '../../shared/mod
         <div class="flex items-center gap-2">
           <mat-form-field appearance="outline" style="width:200px">
             <mat-label>Project</mat-label>
-            <mat-select [(ngModel)]="selectedProject" (ngModelChange)="onProjectChange()">
+            <mat-select [ngModel]="selectedProject()" (ngModelChange)="selectedProject.set($event); onProjectChange()">
               <mat-option [value]="null">Global</mat-option>
               @for (p of projectSvc.projects(); track p.id) {
                 <mat-option [value]="p.id">{{ p.name }}</mat-option>
@@ -54,10 +61,14 @@ import { Objective, KeyResult, BSC_TYPES, ObjectiveType } from '../../shared/mod
       <div class="bsc-grid">
         @for (bsc of bscTypes; track bsc.type) {
           <div class="bsc-quadrant">
-            <div class="quadrant-header">
-              <mat-icon class="bsc-icon">{{ bsc.icon }}</mat-icon>
-              <span>{{ bsc.label }}</span>
-              <span class="quadrant-count">{{ getByType(bsc.type).length }}</span>
+            <div class="quadrant-header"
+                 [style.background]="bscConfig[bsc.type].bg"
+                 [style.border-bottom]="'2px solid ' + bscConfig[bsc.type].border">
+              <mat-icon class="bsc-icon" [style.color]="bscConfig[bsc.type].color">{{ bsc.icon }}</mat-icon>
+              <span [style.color]="bscConfig[bsc.type].color">{{ bsc.label }}</span>
+              <span class="quadrant-count" [style.background]="bscConfig[bsc.type].border" [style.color]="bscConfig[bsc.type].color">
+                {{ getByType(bsc.type).length }}
+              </span>
             </div>
 
             <div class="objectives-list">
@@ -65,7 +76,7 @@ import { Objective, KeyResult, BSC_TYPES, ObjectiveType } from '../../shared/mod
                 <div class="empty-quadrant">Chưa có objective</div>
               }
               @for (obj of getByType(bsc.type); track obj.id) {
-                <div class="objective-card">
+                <div class="objective-card" [style.border-left-color]="bscConfig[obj.type].color">
                   <div class="obj-header">
                     <span class="obj-title">{{ obj.title }}</span>
                     <span class="status-badge status-{{ obj.status }}">{{ statusLabel(obj.status) }}</span>
@@ -82,8 +93,8 @@ import { Objective, KeyResult, BSC_TYPES, ObjectiveType } from '../../shared/mod
 
                   <div class="progress-section">
                     <div class="progress-info">
-                      <span class="text-xs text-muted">Tiến độ</span>
-                      <span class="text-xs font-bold">{{ obj.progress_percent | number:'1.0-0' }}%</span>
+                      <span class="progress-label">Tiến độ</span>
+                      <span class="progress-pct" [style.color]="bscConfig[obj.type].color">{{ obj.progress_percent | number:'1.0-0' }}%</span>
                     </div>
                     <mat-progress-bar mode="determinate" [value]="obj.progress_percent" [color]="progressColor(obj)" />
                   </div>
@@ -93,7 +104,7 @@ import { Objective, KeyResult, BSC_TYPES, ObjectiveType } from '../../shared/mod
                     <div class="key-results">
                       @for (kr of obj.key_results; track kr.id) {
                         <div class="kr-item">
-                          <span class="kr-title text-xs">{{ kr.title }}</span>
+                          <span class="kr-title">{{ kr.title }}</span>
                           @if (kr.type === 'metric') {
                             <div class="kr-metric-edit">
                               @if (editingKrId() === kr.id) {
@@ -108,10 +119,10 @@ import { Objective, KeyResult, BSC_TYPES, ObjectiveType } from '../../shared/mod
                                   (blur)="saveKrValue(kr)"
                                   autofocus
                                 />
-                                <span class="kr-unit text-xs text-muted">/ {{ kr.target_value }} {{ kr.unit }}</span>
+                                <span class="kr-unit">/ {{ kr.target_value }} {{ kr.unit }}</span>
                               } @else {
                                 <span
-                                  class="kr-value text-xs font-semibold kr-clickable"
+                                  class="kr-value kr-clickable"
                                   [matTooltip]="canCreate() ? 'Click để cập nhật giá trị' : ''"
                                   (click)="canCreate() && startEdit(kr)"
                                 >
@@ -120,7 +131,7 @@ import { Objective, KeyResult, BSC_TYPES, ObjectiveType } from '../../shared/mod
                               }
                             </div>
                           } @else {
-                            <span class="kr-value text-xs font-semibold">{{ kr.progress_percent | number:'1.0-0' }}%</span>
+                            <span class="kr-value">{{ kr.progress_percent | number:'1.0-0' }}%</span>
                           }
                         </div>
                       }
@@ -137,34 +148,42 @@ import { Objective, KeyResult, BSC_TYPES, ObjectiveType } from '../../shared/mod
   styles: [`
     .objectives-page { max-width: 1400px; margin: 0 auto; }
     .bsc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-    .bsc-quadrant { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
-    .quadrant-header { display: flex; align-items: center; gap: 8px; padding: 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 14px; }
-    .bsc-icon { color: #3b82f6; font-size: 20px; }
-    .quadrant-count { margin-left: auto; background: #e2e8f0; padding: 1px 8px; border-radius: 999px; font-size: 12px; }
-    .objectives-list { padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 100px; }
-    .empty-quadrant { text-align: center; color: #94a3b8; padding: 24px; font-size: 13px; }
-    .objective-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-    .obj-header { display: flex; align-items: center; gap: 8px; }
-    .obj-title { font-weight: 600; font-size: 14px; flex: 1; }
-    .progress-section { display: flex; flex-direction: column; gap: 4px; }
-    .progress-info { display: flex; justify-content: space-between; }
-    .key-results { display: flex; flex-direction: column; gap: 4px; }
-    .kr-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: #f8fafc; border-radius: 6px; gap: 8px; }
-    .kr-title { color: #475569; flex: 1; min-width: 0; }
-    .kr-value { color: #0f172a; }
-    .kr-metric-edit { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .bsc-quadrant { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .quadrant-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; font-weight: 700; font-size: 15px; }
+    .bsc-icon { font-size: 22px; width: 22px; height: 22px; }
+    .quadrant-count { margin-left: auto; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .objectives-list { padding: 14px; display: flex; flex-direction: column; gap: 12px; min-height: 120px; }
+    .empty-quadrant { text-align: center; color: #94a3b8; padding: 32px 16px; font-size: 13px; }
+    .objective-card {
+      border: 1px solid #e2e8f0; border-left: 4px solid; border-radius: 10px;
+      padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;
+      background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .obj-header { display: flex; align-items: flex-start; gap: 8px; }
+    .obj-title { font-weight: 700; font-size: 15px; color: #0f172a; flex: 1; line-height: 1.4; }
+    .progress-section { display: flex; flex-direction: column; gap: 5px; }
+    .progress-info { display: flex; justify-content: space-between; align-items: center; }
+    .progress-label { font-size: 12px; color: #64748b; font-weight: 500; }
+    .progress-pct { font-size: 16px; font-weight: 800; line-height: 1; }
+    .key-results { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #f1f5f9; padding-top: 8px; }
+    .kr-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 10px; background: #f8fafc; border: 1px solid #e8edf2;
+      border-radius: 7px; gap: 10px;
+    }
+    .kr-title { font-size: 13px; color: #334155; font-weight: 500; flex: 1; min-width: 0; line-height: 1.4; }
+    .kr-value { font-size: 13px; font-weight: 700; color: #1e293b; white-space: nowrap; flex-shrink: 0; }
+    .kr-metric-edit { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .kr-clickable { cursor: pointer; text-decoration: underline dotted #94a3b8; }
-    .kr-clickable:hover { color: #3b82f6; }
+    .kr-clickable:hover { color: #3b82f6; text-decoration-color: #3b82f6; }
     .kr-inline-input {
-      width: 90px; padding: 2px 6px; border: 1.5px solid #3b82f6; border-radius: 4px;
-      font-size: 12px; font-weight: 600; outline: none; background: white;
+      width: 90px; padding: 3px 8px; border: 1.5px solid #3b82f6; border-radius: 5px;
+      font-size: 13px; font-weight: 600; outline: none; background: white;
       -moz-appearance: textfield;
     }
     .kr-inline-input::-webkit-outer-spin-button,
     .kr-inline-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .kr-unit { color: #64748b; white-space: nowrap; }
-    .kr-edit-btn { width: 20px; height: 20px; line-height: 20px; color: #94a3b8; }
-    .kr-edit-btn:hover { color: #3b82f6; }
+    .kr-unit { font-size: 12px; color: #64748b; white-space: nowrap; }
     @media (max-width: 900px) { .bsc-grid { grid-template-columns: 1fr; } }
   `]
 })
@@ -176,7 +195,8 @@ export class ObjectivesComponent implements OnInit {
   private confirmSvc    = inject(ConfirmService);
   private snackbar      = inject(MatSnackBar);
 
-  bscTypes        = BSC_TYPES;
+  bscTypes   = BSC_TYPES;
+  bscConfig  = BSC_CONFIG;
   selectedProject = signal<string | null>(null);
   editingKrId     = signal<string | null>(null);
   editingValue    = 0;

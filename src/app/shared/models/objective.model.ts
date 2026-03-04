@@ -2,6 +2,52 @@ export type ObjectiveType = 'financial' | 'customer' | 'internal' | 'learning';
 export type ObjectiveStatus = 'on_track' | 'at_risk' | 'behind';
 export type KeyResultType = 'metric' | 'task_linked';
 
+export interface Vision {
+  id: string;
+  title: string;
+  description: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Strategy {
+  id: string;
+  vision_id: string;
+  project_id: string | null;
+  title: string;
+  description: string | null;
+  period_year: number;
+  period_quarter: number | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  vision?: Vision;
+}
+
+export interface ValueChainActivity {
+  id: string;
+  code: string;
+  label: string;
+  description?: string | null;
+  sort_order: number;
+}
+
+export interface Ksf {
+  id: string;
+  code: string;
+  label: string;
+  description: string | null;
+  sort_order: number;
+}
+
+export interface Perspective {
+  id: string;
+  code: string;
+  label: string;
+  sort_order: number;
+}
+
 export interface Objective {
   id: string;
   project_id: string | null;
@@ -13,6 +59,14 @@ export interface Objective {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  strategy_id?: string | null;
+  value_chain_activity_id?: string | null;
+  ksf_id?: string | null;
+  perspective_id?: string | null;
+  strategy?: Strategy | null;
+  value_chain_activity?: ValueChainActivity | null;
+  ksf?: Ksf | null;
+  perspective?: Perspective | null;
   key_results?: KeyResult[];
 }
 
@@ -48,9 +102,24 @@ export interface BigPictureKR extends KeyResult {
   tasks: BigPictureTask[];
 }
 
-/** Objective entry in Big Picture */
+/** Objective entry in Big Picture (includes strategy/vision/value_chain from RPC) */
 export interface BigPictureObjective extends Objective {
   key_results: BigPictureKR[];
+  strategy_id?: string | null;
+  strategy_title?: string | null;
+  strategy_period?: string | null;
+  vision_id?: string | null;
+  vision_title?: string | null;
+  value_chain_activity_id?: string | null;
+  value_chain_activity_code?: string | null;
+  value_chain_activity_label?: string | null;
+  value_chain_activity_sort_order?: number | null;
+  ksf_id?: string | null;
+  ksf_code?: string | null;
+  ksf_label?: string | null;
+  perspective_id?: string | null;
+  perspective_code?: string | null;
+  perspective_label?: string | null;
 }
 
 export const BSC_TYPES: { type: ObjectiveType; label: string; icon: string }[] = [

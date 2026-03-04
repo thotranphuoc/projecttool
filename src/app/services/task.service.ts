@@ -80,6 +80,16 @@ export class TaskService {
     return data;
   }
 
+  /** Get project_id for a task (e.g. for notification deep link). */
+  async getTaskProjectId(taskId: string): Promise<string | null> {
+    const { data } = await this.supabase
+      .from('tasks')
+      .select('project_id')
+      .eq('id', taskId)
+      .single();
+    return data?.project_id ?? null;
+  }
+
   async createTask(dto: CreateTaskDto): Promise<Task | null> {
     const { data } = await this.supabase.from('tasks').insert(dto).select().single();
     if (data) {

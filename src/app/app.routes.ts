@@ -38,6 +38,33 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/strategy/big-picture.component').then(m => m.BigPictureComponent)
   },
+  {
+    path: 'visions',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/strategy/vision.component').then(m => m.VisionComponent)
+  },
+  {
+    path: 'strategies',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/strategy/strategies.component').then(m => m.StrategiesComponent)
+  },
+  {
+    path: 'vision-strategy',
+    redirectTo: 'visions',
+    pathMatch: 'full'
+  },
+
+  {
+    path: 'value-chain',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () => import('./features/strategy/value-chain.component').then(m => m.ValueChainComponent)
+  },
+
+  {
+    path: 'ksf',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () => import('./features/strategy/ksf.component').then(m => m.KsfComponent)
+  },
 
   {
     path: 'team-activity',
@@ -79,6 +106,10 @@ export const routes: Routes = [
       {
         path: 'menu-settings',
         loadComponent: () => import('./features/admin/admin-menu-settings.component').then(m => m.AdminMenuSettingsComponent)
+      },
+      {
+        path: 'export',
+        loadComponent: () => import('./features/admin/admin-export.component').then(m => m.AdminExportComponent)
       }
     ]
   },

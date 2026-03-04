@@ -13,6 +13,7 @@ import { AuthService } from './core/auth/auth.service';
 import { NotificationService } from './services/notification.service';
 import { TimerService } from './services/timer.service';
 import { TaskService } from './services/task.service';
+import { Notification } from './shared/models';
 import { ProjectService } from './services/project.service';
 import { AppSettingsService } from './services/app-settings.service';
 import { MatDialog } from '@angular/material/dialog';
@@ -141,6 +142,9 @@ import { NAV_ITEMS, type NavItem } from './app.constants';
           <button mat-menu-item [routerLink]="'/admin/menu-settings'">
             <mat-icon>menu</mat-icon> Hiển thị menu
           </button>
+          <button mat-menu-item [routerLink]="'/admin/export'">
+            <mat-icon>download</mat-icon> Xuất dữ liệu
+          </button>
         }
         <mat-divider />
         <button mat-menu-item (click)="auth.signOut()">
@@ -165,7 +169,7 @@ import { NAV_ITEMS, type NavItem } from './app.constants';
         @for (notif of notifSvc.notifications().slice(0, 10); track notif.id) {
           <button mat-menu-item
                   [class.unread]="!notif.is_read"
-                  (click)="onNotifClick(notif.id)">
+                  (click)="onNotifClick(notif)">
             <mat-icon matListItemIcon>{{ notifIcon(notif.type) }}</mat-icon>
             <span class="notif-content">
               <strong>{{ notif.title }}</strong>
@@ -279,6 +283,7 @@ export class AppComponent {
   private taskSvc    = inject(TaskService);
   private projectSvc = inject(ProjectService);
   private appSettingsSvc = inject(AppSettingsService);
+  private router     = inject(Router);
 
   avatarError = false;
 
@@ -371,7 +376,28 @@ export class AppComponent {
     return map[type] ?? 'notifications';
   }
 
-  async onNotifClick(id: string): Promise<void> {
-    await this.notifSvc.markRead(id);
+  async onNotifClick(notif: Notification): Promise<void> {
+    await this.notifSvc.markRead(notif.id);
+    const eid = notif.entity_id;
+    const etype = notif.entity_type;
+    if (!eid || !etype) return;
+    switch (etype) {
+      case 'project':
+        this.router.navigate(['/project', eid]);
+        break;
+      case 'objective':
+        this.router.navigate(['/objectives']);
+        break;
+      case 'message':
+        this.router.navigate(['/chat']);
+        break;
+      case 'task': {
+        const projectId = await this.taskSvc.getTaskProjectId(eid);
+        if (projectId) this.router.navigate(['/project', projectId], { queryParams: { openTask: eid } });
+        break;
+      }
+      default:
+        break;
+    }
   }
 }

@@ -23,14 +23,33 @@ export class ObjectiveService {
   async getBigPicture(): Promise<BigPictureObjective[]> {
     const { data, error } = await this.supabase.rpc('get_big_picture');
     if (error) { console.error('get_big_picture error:', error); return []; }
-    return (data as BigPictureObjective[]) ?? [];
+    const raw = (data as any[]) ?? [];
+    return raw.map((row: any) => ({
+      ...row,
+      value_chain_activity_id: row.value_chain_activity_id ?? row.valueChainActivityId ?? null,
+      value_chain_activity_code: row.value_chain_activity_code ?? row.valueChainActivityCode ?? null,
+      value_chain_activity_label: row.value_chain_activity_label ?? row.valueChainActivityLabel ?? null,
+      value_chain_activity_sort_order: row.value_chain_activity_sort_order ?? row.valueChainActivitySortOrder ?? null,
+      ksf_id: row.ksf_id ?? row.ksfId ?? null,
+      ksf_code: row.ksf_code ?? row.ksfCode ?? null,
+      ksf_label: row.ksf_label ?? row.ksfLabel ?? null,
+      perspective_id: row.perspective_id ?? row.perspectiveId ?? null,
+      perspective_code: row.perspective_code ?? row.perspectiveCode ?? null,
+      perspective_label: row.perspective_label ?? row.perspectiveLabel ?? null,
+    })) as BigPictureObjective[];
   }
 
   async loadObjectives(projectId: string | null = null): Promise<void> {
     this.isLoading.set(true);
     let query = this.supabase
       .from('objectives')
-      .select('*, key_results(*)')
+      .select(`
+        *,
+        key_results(*),
+        strategy:strategies(id, title, period_year, period_quarter, vision_id, vision:visions(id, title)),
+        value_chain_activity:value_chain_activities(id, code, label),
+        ksf:ksfs(id, code, label)
+      `)
       .order('created_at');
 
     if (projectId === null) {
@@ -40,7 +59,13 @@ export class ObjectiveService {
     }
 
     const { data } = await query;
-    this.objectives.set(data ?? []);
+    const list = (data ?? []).map((row: any) => ({
+      ...row,
+      strategy: row.strategy,
+      value_chain_activity: row.value_chain_activity,
+      ksf: row.ksf,
+    }));
+    this.objectives.set(list);
     this.isLoading.set(false);
   }
 
