@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../../core/auth/auth.service';
+import { APP_SLOGAN } from '../../app.constants';
 
 @Component({
   selector: 'app-login',
@@ -23,9 +24,10 @@ import { AuthService } from '../../core/auth/auth.service';
     <div class="login-page">
       <div class="login-card">
         <div class="login-logo">
-          <mat-icon class="logo-icon">rocket_launch</mat-icon>
-          <h1>PM App</h1>
-          <p>{{ mode() === 'login' ? 'Đăng nhập để tiếp tục' : 'Tạo tài khoản mới' }}</p>
+          <mat-icon class="logo-icon">sync_alt</mat-icon>
+          <h1>Sync2Scale</h1>
+          <p class="slogan">{{ slogan }}</p>
+          <p>{{ mode() === 'login' ? 'Đăng nhập để tiếp tục' : mode() === 'register' ? 'Tạo tài khoản mới' : 'Khôi phục mật khẩu' }}</p>
         </div>
 
         <form (ngSubmit)="submitForm()">
@@ -35,13 +37,15 @@ import { AuthService } from '../../core/auth/auth.service';
             <mat-icon matSuffix>email</mat-icon>
           </mat-form-field>
 
+          @if (mode() !== 'forgot') {
           <mat-form-field appearance="outline">
             <mat-label>Mật khẩu</mat-label>
-            <input matInput [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" name="password" required />
+            <input matInput [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" name="password" [required]="mode() === 'login'" />
             <button mat-icon-button matSuffix type="button" (click)="showPassword.update(v => !v)">
               <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
             </button>
           </mat-form-field>
+          }
 
           @if (mode() === 'register') {
             <mat-form-field appearance="outline">
@@ -68,17 +72,26 @@ import { AuthService } from '../../core/auth/auth.service';
             @if (isLoading()) {
               <mat-spinner diameter="20" />
             } @else {
-              {{ mode() === 'login' ? 'Đăng nhập' : 'Tạo tài khoản' }}
+              {{ mode() === 'login' ? 'Đăng nhập' : mode() === 'register' ? 'Tạo tài khoản' : 'Gửi link khôi phục' }}
             }
           </button>
         </form>
 
         <p class="register-link">
-          {{ mode() === 'login' ? 'Chưa có tài khoản?' : 'Đã có tài khoản?' }}
-          <a (click)="mode.update(v => v === 'login' ? 'register' : 'login'); errorMsg.set('')">
-            {{ mode() === 'login' ? 'Đăng ký ngay' : 'Đăng nhập' }}
-          </a>
+          @if (mode() === 'forgot') {
+            <a (click)="mode.set('login'); errorMsg.set('')">Quay lại đăng nhập</a>
+          } @else {
+            {{ mode() === 'login' ? 'Chưa có tài khoản?' : 'Đã có tài khoản?' }}
+            <a (click)="mode.update(v => v === 'login' ? 'register' : 'login'); errorMsg.set('')">
+              {{ mode() === 'login' ? 'Đăng ký ngay' : 'Đăng nhập' }}
+            </a>
+          }
         </p>
+        @if (mode() === 'login') {
+        <p class="forgot-link">
+          <a (click)="mode.set('forgot'); errorMsg.set('')">Quên mật khẩu?</a>
+        </p>
+        }
       </div>
     </div>
   `,
@@ -102,12 +115,16 @@ import { AuthService } from '../../core/auth/auth.service';
     .login-logo { text-align: center; margin-bottom: 32px; }
     .logo-icon { font-size: 52px; width: 52px; height: 52px; color: #3b82f6; display: block; margin: 0 auto 8px; }
     .login-logo h1 { margin: 0 0 4px; font-size: 28px; font-weight: 800; color: #0f172a; }
-    .login-logo p  { margin: 0; color: #64748b; font-size: 14px; }
+    .login-logo .slogan { margin: 0; font-size: 15px; font-weight: 600; color: #3b82f6; letter-spacing: 0.3px; }
+    .login-logo p  { margin: 4px 0 0; color: #64748b; font-size: 14px; }
     form { display: flex; flex-direction: column; }
     mat-form-field { width: 100%; margin-bottom: 4px; }
     .submit-btn { height: 46px; border-radius: 8px !important; font-size: 15px; font-weight: 600; margin-top: 8px; display: flex; align-items: center; justify-content: center; }
     .register-link { text-align: center; margin-top: 20px; font-size: 14px; color: #64748b; }
     .register-link a { color: #3b82f6; cursor: pointer; font-weight: 600; }
+    .forgot-link { text-align: center; margin-top: 8px; font-size: 13px; }
+    .forgot-link a { color: #64748b; cursor: pointer; }
+    .forgot-link a:hover { color: #3b82f6; text-decoration: underline; }
     .error-msg { display: flex; align-items: center; gap: 8px; color: #dc2626; font-size: 13px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
     .error-msg mat-icon { font-size: 18px; width: 18px; height: 18px; flex-shrink: 0; }
     /* ensure suffix icons are visible and not clipped */
@@ -116,6 +133,7 @@ import { AuthService } from '../../core/auth/auth.service';
   `]
 })
 export class LoginComponent {
+  readonly slogan = APP_SLOGAN;
   private auth     = inject(AuthService);
   private router   = inject(Router);
   private route    = inject(ActivatedRoute);
@@ -128,13 +146,40 @@ export class LoginComponent {
   isLoading       = signal(false);
   showPassword    = signal(false);
   errorMsg        = signal('');
-  mode            = signal<'login' | 'register'>('login');
+  mode            = signal<'login' | 'register' | 'forgot'>('login');
 
   async submitForm(): Promise<void> {
     this.errorMsg.set('');
 
-    if (!this.email || !this.password) {
-      this.errorMsg.set('Vui lòng nhập email và mật khẩu.');
+    if (!this.email.trim()) {
+      this.errorMsg.set('Vui lòng nhập email.');
+      return;
+    }
+
+    if (this.mode() === 'forgot') {
+      this.isLoading.set(true);
+      try {
+        const { error } = await this.auth.resetPasswordForEmail(this.email.trim());
+        if (error) {
+          this.errorMsg.set(error.message || 'Không thể gửi email. Thử lại sau.');
+        } else {
+          this.snackBar.open(
+            'Đã gửi link khôi phục mật khẩu đến email của bạn. Kiểm tra hộp thư (và thư mục spam).',
+            'Đóng',
+            { duration: 6000 }
+          );
+          this.mode.set('login');
+        }
+      } catch (e: any) {
+        this.errorMsg.set(e?.message || 'Đã có lỗi xảy ra.');
+      } finally {
+        this.isLoading.set(false);
+      }
+      return;
+    }
+
+    if (!this.password) {
+      this.errorMsg.set('Vui lòng nhập mật khẩu.');
       return;
     }
 

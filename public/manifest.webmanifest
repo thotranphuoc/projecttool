@@ -1,6 +1,6 @@
 {
-  "name": "pm-app",
-  "short_name": "pm-app",
+  "name": "Sync2Scale",
+  "short_name": "Sync2Scale",
   "display": "standalone",
   "scope": "./",
   "start_url": "./",

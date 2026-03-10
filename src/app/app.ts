@@ -18,7 +18,7 @@ import { ProjectService } from './services/project.service';
 import { AppSettingsService } from './services/app-settings.service';
 import { MatDialog } from '@angular/material/dialog';
 import { filter } from 'rxjs';
-import { NAV_ITEMS, type NavItem } from './app.constants';
+import { APP_SLOGAN, NAV_ITEMS, type NavItem } from './app.constants';
 
 @Component({
   selector: 'app-root',
@@ -42,8 +42,11 @@ import { NAV_ITEMS, type NavItem } from './app.constants';
         <mat-sidenav #sidenav mode="side" opened class="sidenav">
           <!-- Logo -->
           <div class="sidenav-logo">
-            <mat-icon class="logo-icon">rocket_launch</mat-icon>
-            <span class="logo-text">PM App</span>
+            <mat-icon class="logo-icon">sync_alt</mat-icon>
+            <div class="logo-block">
+              <span class="logo-text">Sync2Scale</span>
+              <span class="logo-slogan">{{ slogan }}</span>
+            </div>
           </div>
           <mat-divider />
 
@@ -204,7 +207,9 @@ import { NAV_ITEMS, type NavItem } from './app.constants';
       padding: 20px 16px; background: #0f172a;
     }
     .logo-icon { font-size: 28px; width: 28px; height: 28px; color: #60a5fa; }
+    .logo-block { display: flex; flex-direction: column; gap: 2px; }
     .logo-text { font-size: 18px; font-weight: 700; color: white; letter-spacing: 0.5px; }
+    .logo-slogan { font-size: 11px; color: #94a3b8; font-weight: 500; letter-spacing: 0.2px; }
 
     mat-nav-list { padding-top: 8px; flex: 1; }
     :host ::ng-deep .sidenav mat-nav-list .mat-mdc-list-item,
@@ -285,6 +290,7 @@ import { NAV_ITEMS, type NavItem } from './app.constants';
   `]
 })
 export class AppComponent {
+  readonly slogan = APP_SLOGAN;
   readonly auth      = inject(AuthService);
   readonly notifSvc  = inject(NotificationService);
   readonly timerSvc  = inject(TimerService);

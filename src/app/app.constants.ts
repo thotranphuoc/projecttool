@@ -1,3 +1,5 @@
+export const APP_SLOGAN = 'Sync your team. Scale your dream.';
+
 export interface NavItem {
   label: string;
   icon: string;

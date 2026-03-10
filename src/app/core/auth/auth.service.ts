@@ -100,6 +100,19 @@ export class AuthService {
     if (error) throw error;
   }
 
+  /** Gửi email khôi phục mật khẩu. User nhận link và mở /reset-password để đặt mật khẩu mới. */
+  async resetPasswordForEmail(email: string): Promise<{ error?: { message: string } }> {
+    const redirectTo = `${window.location.origin}/reset-password`;
+    const { error } = await this.supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    return error ? { error: { message: error.message } } : {};
+  }
+
+  /** Đặt mật khẩu mới (sau khi user mở link từ email recovery). */
+  async updatePassword(newPassword: string): Promise<{ error?: { message: string } }> {
+    const { error } = await this.supabase.auth.updateUser({ password: newPassword });
+    return error ? { error: { message: error.message } } : {};
+  }
+
   async signOut(): Promise<void> {
     const uid = this.userId();
     if (uid) {
