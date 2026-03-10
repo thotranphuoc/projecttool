@@ -146,6 +146,9 @@ import { NAV_ITEMS, type NavItem } from './app.constants';
           <button mat-menu-item [routerLink]="'/admin/export'">
             <mat-icon>download</mat-icon> Xuất dữ liệu
           </button>
+          <button mat-menu-item [routerLink]="'/admin/data-management'">
+            <mat-icon>delete_forever</mat-icon> Xóa Project / Task / Subtask
+          </button>
         }
         @if (auth.isAdmin() || auth.isDirector()) {
           <button mat-menu-item [routerLink]="'/admin/error-logs'">

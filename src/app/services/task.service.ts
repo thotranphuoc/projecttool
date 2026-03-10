@@ -169,6 +169,37 @@ export class TaskService {
     return error ? { error } : null;
   }
 
+  /** Admin: load all tasks with project name. */
+  async loadAllTasksForAdmin(): Promise<{ id: string; title: string; status: string; project_id: string; project_name: string }[]> {
+    const { data } = await this.supabase
+      .from('tasks')
+      .select('id, title, status, project_id, projects(name)')
+      .order('created_at', { ascending: false });
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      status: r.status,
+      project_id: r.project_id,
+      project_name: r.projects?.name ?? '—'
+    }));
+  }
+
+  /** Admin: load all subtasks with task and project info. */
+  async loadAllSubtasksForAdmin(): Promise<{ id: string; title: string; status: string; task_id: string; task_title: string; project_name: string }[]> {
+    const { data } = await this.supabase
+      .from('subtasks')
+      .select('id, title, status, parent_id, tasks(title), projects(name)')
+      .order('created_at', { ascending: false });
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      status: r.status,
+      task_id: r.parent_id,
+      task_title: r.tasks?.title ?? '—',
+      project_name: r.projects?.name ?? '—'
+    }));
+  }
+
   // ── Comments ──────────────────────────────────────────────
   async getComments(taskId: string): Promise<TaskComment[]> {
     const { data } = await this.supabase

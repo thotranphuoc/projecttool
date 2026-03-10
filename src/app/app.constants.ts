@@ -10,10 +10,10 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',              icon: 'dashboard',           route: '/dashboard' },
   // Định hướng
   { label: 'Tầm nhìn',               icon: 'visibility',          route: '/visions' },
-  { label: 'KSF',                    icon: 'rule',                 route: '/ksf',          roles: ['admin'] },
+  { label: 'KSF',                    icon: 'rule',                 route: '/ksf' },
   // Thiết kế
   { label: 'Chiến lược',             icon: 'campaign',             route: '/strategies' },
-  { label: 'Chuỗi giá trị',         icon: 'timeline',            route: '/value-chain',   roles: ['admin'] },
+  { label: 'Chuỗi giá trị',         icon: 'timeline',            route: '/value-chain' },
   // Đo lường
   { label: 'Objectives',             icon: 'track_changes',       route: '/objectives' },
   { label: 'The Big Picture',        icon: 'panorama',            route: '/big-picture' },

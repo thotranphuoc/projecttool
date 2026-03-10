@@ -56,13 +56,13 @@ export const routes: Routes = [
 
   {
     path: 'value-chain',
-    canActivate: [authGuard, adminGuard],
+    canActivate: [authGuard],
     loadComponent: () => import('./features/strategy/value-chain.component').then(m => m.ValueChainComponent)
   },
 
   {
     path: 'ksf',
-    canActivate: [authGuard, adminGuard],
+    canActivate: [authGuard],
     loadComponent: () => import('./features/strategy/ksf.component').then(m => m.KsfComponent)
   },
 
@@ -114,6 +114,11 @@ export const routes: Routes = [
         path: 'export',
         canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin-export.component').then(m => m.AdminExportComponent)
+      },
+      {
+        path: 'data-management',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/admin/admin-data-management.component').then(m => m.AdminDataManagementComponent)
       },
       {
         path: 'error-logs',
