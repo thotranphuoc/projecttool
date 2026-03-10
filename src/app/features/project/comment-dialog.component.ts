@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { TaskService } from '../../services/task.service';
 import { ProjectService } from '../../services/project.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -124,6 +125,7 @@ export class CommentDialogComponent implements OnInit {
   readonly auth      = inject(AuthService);
   private taskSvc    = inject(TaskService);
   private projectSvc = inject(ProjectService);
+  private snackBar   = inject(MatSnackBar);
 
   comments    = signal<TaskComment[]>([]);
   newComment  = signal('');
@@ -202,9 +204,17 @@ export class CommentDialogComponent implements OnInit {
   async sendComment(): Promise<void> {
     const text = this.newComment().trim();
     if (!text) return;
-    const uid = this.auth.userId()!;
+    const uid = this.auth.userId();
+    if (!uid) {
+      this.snackBar.open('Vui lòng đăng nhập để bình luận', 'Đóng', { duration: 3000 });
+      return;
+    }
     const mentions = [...this.mentionedIds()];
-    const comment = await this.taskSvc.addComment(this.data.task.id, uid, text, mentions);
+    const { comment, error } = await this.taskSvc.addComment(this.data.task.id, uid, text, mentions);
+    if (error) {
+      this.snackBar.open('Không lưu được comment: ' + error, 'Đóng', { duration: 5000 });
+      return;
+    }
     if (comment) {
       comment.author = { display_name: this.auth.profile()?.display_name ?? null, photo_url: this.auth.profile()?.photo_url ?? null };
       this.comments.update(list => [...list, comment]);

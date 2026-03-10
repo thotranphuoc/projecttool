@@ -24,6 +24,14 @@ export const adminGuard: CanActivateFn = () => {
   return router.createUrlTree(['/dashboard']);
 };
 
+/** Admin hoặc Director (cho màn error-logs). */
+export const adminOrDirectorGuard: CanActivateFn = () => {
+  const auth   = inject(AuthService);
+  const router = inject(Router);
+  if (auth.isAdmin() || auth.isDirector()) return true;
+  return router.createUrlTree(['/dashboard']);
+};
+
 export const directorGuard: CanActivateFn = () => {
   const auth   = inject(AuthService);
   const router = inject(Router);

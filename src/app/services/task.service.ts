@@ -1,10 +1,12 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseService } from '../core/supabase.service';
+import { ErrorLogService } from '../core/error-log.service';
 import { Task, Subtask, TaskComment, TimeLog, CreateTaskDto, TaskStatus } from '../shared/models';
 
 @Injectable({ providedIn: 'root' })
 export class TaskService {
   private supabase = inject(SupabaseService).client;
+  private errorLog = inject(ErrorLogService);
 
   readonly tasks         = signal<Task[]>([]);
   readonly isLoading     = signal(false);
@@ -14,11 +16,12 @@ export class TaskService {
 
   async loadTasks(projectId: string): Promise<void> {
     this.isLoading.set(true);
-    const { data } = await this.supabase
+    const { data, error } = await this.supabase
       .from('tasks')
       .select('*')
       .eq('project_id', projectId)
       .order('created_at', { ascending: true });
+    this.errorLog.logSupabase({ data, error }, 'loadTasks', { projectId });
     this.tasks.set(data ?? []);
     this.isLoading.set(false);
     this.subscribeRealtime(projectId);
@@ -124,6 +127,20 @@ export class TaskService {
   }
 
   // ── Subtasks ──────────────────────────────────────────────
+  /** Task IDs (parent_id) where user is assigned to at least one subtask. Dùng cho filter "Chỉ của tôi". */
+  async getTaskIdsWithUserInSubtasks(projectId: string, userId: string): Promise<Set<string>> {
+    const { data } = await this.supabase
+      .from('subtasks')
+      .select('parent_id')
+      .eq('project_id', projectId)
+      .contains('assignees', [userId]);
+    const ids = new Set<string>();
+    for (const row of (data ?? []) as { parent_id: string }[]) {
+      if (row.parent_id) ids.add(row.parent_id);
+    }
+    return ids;
+  }
+
   async getSubtasks(taskId: string): Promise<Subtask[]> {
     const { data } = await this.supabase.from('subtasks').select('*').eq('parent_id', taskId).order('created_at');
     const raw = (data ?? []) as any[];
@@ -134,7 +151,8 @@ export class TaskService {
   }
 
   async createSubtask(dto: Omit<Subtask, 'id' | 'actual_seconds' | 'created_at' | 'updated_at'>): Promise<Subtask | null> {
-    const { data } = await this.supabase.from('subtasks').insert(dto).select().single();
+    const { data, error } = await this.supabase.from('subtasks').insert(dto).select().single();
+    this.errorLog.logSupabase({ data, error }, 'createSubtask', { parent_id: dto.parent_id });
     return data;
   }
 
@@ -143,7 +161,7 @@ export class TaskService {
       .from('subtasks')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id);
-    return error ? { error } : null;
+    return error ? (this.errorLog.log(error, 'updateSubtask', { id }), { error }) : null;
   }
 
   async deleteSubtask(id: string): Promise<{ error: unknown } | null> {
@@ -174,13 +192,17 @@ export class TaskService {
     });
   }
 
-  async addComment(taskId: string, authorId: string, content: string, mentionedIds: string[] = []): Promise<TaskComment | null> {
-    const { data } = await this.supabase
+  async addComment(taskId: string, authorId: string, content: string, mentionedIds: string[] = []): Promise<{ comment: TaskComment | null; error?: string }> {
+    const { data, error } = await this.supabase
       .from('task_comments')
       .insert({ task_id: taskId, author_id: authorId, content, mentioned_user_ids: mentionedIds })
       .select('*, author:profiles(display_name, photo_url)')
       .single();
-    return data;
+    if (error) {
+      this.errorLog.log(error, 'addComment', { taskId });
+      return { comment: null, error: error.message };
+    }
+    return { comment: data as TaskComment };
   }
 
   async deleteComment(id: string): Promise<void> {

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { ApplicationRef, ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
@@ -17,6 +17,7 @@ import { Notification } from './shared/models';
 import { ProjectService } from './services/project.service';
 import { AppSettingsService } from './services/app-settings.service';
 import { MatDialog } from '@angular/material/dialog';
+import { filter } from 'rxjs';
 import { NAV_ITEMS, type NavItem } from './app.constants';
 
 @Component({
@@ -144,6 +145,11 @@ import { NAV_ITEMS, type NavItem } from './app.constants';
           </button>
           <button mat-menu-item [routerLink]="'/admin/export'">
             <mat-icon>download</mat-icon> Xuất dữ liệu
+          </button>
+        }
+        @if (auth.isAdmin() || auth.isDirector()) {
+          <button mat-menu-item [routerLink]="'/admin/error-logs'">
+            <mat-icon>bug_report</mat-icon> Error Logs
           </button>
         }
         <mat-divider />
@@ -284,6 +290,7 @@ export class AppComponent {
   private projectSvc = inject(ProjectService);
   private appSettingsSvc = inject(AppSettingsService);
   private router     = inject(Router);
+  private appRef     = inject(ApplicationRef);
 
   avatarError = false;
 
@@ -337,6 +344,11 @@ export class AppComponent {
         this.appSettingsSvc.loadAppSettings();
       }
     });
+
+    // Zoneless: trigger change detection after navigation so routed components render
+    this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe(() => this.appRef.tick());
   }
 
   readonly isManagerOfAnyProject = computed(() => {

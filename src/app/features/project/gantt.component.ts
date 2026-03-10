@@ -75,6 +75,10 @@ interface WeekendRegion { leftPx: number; widthPx: number; }
       <button [class.active]="viewMode==='month'"   (click)="setView('month')">Tháng</button>
       <button [class.active]="viewMode==='quarter'" (click)="setView('quarter')">Quý</button>
     </div>
+    <div class="g-scope">
+      <button [class.active]="taskScope()==='all'"     (click)="setTaskScope('all')" matTooltip="Hiện tất cả task">Tất cả</button>
+      <button [class.active]="taskScope()==='active'"  (click)="setTaskScope('active')" matTooltip="Chỉ Đang làm & Sắp làm">Đang làm & Sắp làm</button>
+    </div>
     <div class="g-legend">
       <span class="lg"><span class="lg-dot" style="background:#3b82f6"></span>In Progress</span>
       <span class="lg"><span class="lg-dot" style="background:#f59e0b"></span>Review</span>
@@ -270,6 +274,18 @@ interface WeekendRegion { leftPx: number; widthPx: number; }
   background: white; color: #1e293b; font-weight: 600;
   box-shadow: 0 1px 3px rgba(0,0,0,.12);
 }
+.g-scope {
+  display: flex; gap: 2px;
+  background: #f1f5f9; border-radius: 8px; padding: 3px;
+}
+.g-scope button {
+  padding: 4px 12px; border: none; background: transparent; border-radius: 6px;
+  font-size: 12px; cursor: pointer; color: #64748b; transition: all 0.15s;
+}
+.g-scope button.active {
+  background: white; color: #1e293b; font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
 .g-legend  { display: flex; gap: 14px; align-items: center; }
 .lg        { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #64748b; }
 .lg-dot    { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
@@ -459,11 +475,16 @@ export class GanttComponent implements OnChanges, OnInit {
 
   tasks      = input.required<Task[]>();
   projectId  = input<string>();  // optional: khi có thì hiện create row + quick create
+  /** 'active' = chỉ Đang làm + Sắp làm (do parent filter); 'all' = tất cả task đã truyền vào */
+  taskScope  = input<'all' | 'active'>('active');
+  /** Chỉ hiện task có [start,end] giao với khung nhìn hiện tại */
+  filterByViewRange = input<boolean>(true);
   /** Hàm resolve assignees: được truyền từ ProjectComponent (getAssignees) */
   assigneesResolver = input<(task: Task) => { id: string; display_name: string | null; photo_url: string | null; email: string }[] | null>();
 
   taskEdit   = output<Task>();
   taskCreated = output<Task>();
+  taskScopeChange = output<'all' | 'active'>();
 
   private taskSvc = inject(TaskService);
   private cdr = inject(ChangeDetectorRef);
@@ -505,7 +526,7 @@ export class GanttComponent implements OnChanges, OnInit {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['tasks'] || changes['projectId']) this.buildView();
+    if (changes['tasks'] || changes['projectId'] || changes['taskScope'] || changes['filterByViewRange']) this.buildView();
   }
 
   // ─── Public ─────────────────────────────────────────────────────────────────
@@ -513,6 +534,10 @@ export class GanttComponent implements OnChanges, OnInit {
   setView(mode: ViewMode): void {
     this.viewMode = mode;
     this.buildView();
+  }
+
+  setTaskScope(scope: 'all' | 'active'): void {
+    this.taskScopeChange.emit(scope);
   }
 
   onBarMouseDown(event: MouseEvent, row: GanttRow, mode: 'move' | 'resize-left' | 'resize-right'): void {
@@ -719,9 +744,10 @@ export class GanttComponent implements OnChanges, OnInit {
     tasks.forEach(t => { if (!this.taskIdsInOrder.includes(t.id)) this.taskIdsInOrder.push(t.id); });
 
     const taskMap = new Map(tasks.map(t => [t.id, t]));
+    const filterByRange = this.filterByViewRange();
     this.rows = this.taskIdsInOrder
       .map(id => taskMap.get(id))
-      .filter((t): t is Task => !!t)
+      .filter((t): t is Task => !!t && (!filterByRange || this.taskIntersectsView(t)))
       .map(t => this.buildRow(t))
       .filter((r): r is GanttRow => r !== null);
 
@@ -949,6 +975,12 @@ export class GanttComponent implements OnChanges, OnInit {
     this.rows = this.rows.map(r =>
       r.id === rowId ? { ...r, barLeft, barWidth } : r
     );
+  }
+
+  /** Task có [start,end] giao với khung nhìn viewStartD..viewEndD không */
+  private taskIntersectsView(task: Task): boolean {
+    const { start, end } = this.taskDates(task);
+    return end >= this.viewStartD && start <= this.viewEndD;
   }
 
   // ─── Date helpers ───────────────────────────────────────────────────────────

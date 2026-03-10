@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, adminGuard, directorGuard, pmOrDirectorOrAdminGuard } from './core/auth/auth.guard';
+import { authGuard, adminGuard, adminOrDirectorGuard, directorGuard, pmOrDirectorOrAdminGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
@@ -92,24 +92,33 @@ export const routes: Routes = [
 
   {
     path: 'admin',
-    canActivate: [authGuard, adminGuard],
+    canActivate: [authGuard],
     children: [
       { path: '', redirectTo: 'users', pathMatch: 'full' },
       {
         path: 'users',
+        canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin-users.component').then(m => m.AdminUsersComponent)
       },
       {
         path: 'settings',
+        canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin-settings.component').then(m => m.AdminSettingsComponent)
       },
       {
         path: 'menu-settings',
+        canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin-menu-settings.component').then(m => m.AdminMenuSettingsComponent)
       },
       {
         path: 'export',
+        canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin-export.component').then(m => m.AdminExportComponent)
+      },
+      {
+        path: 'error-logs',
+        canActivate: [adminOrDirectorGuard],
+        loadComponent: () => import('./features/admin/admin-error-logs.component').then(m => m.AdminErrorLogsComponent)
       }
     ]
   },

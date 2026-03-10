@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, input, signal, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, input, signal, ViewEncapsulation } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
@@ -63,13 +63,22 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
             <button mat-menu-item (click)="priorityFilter.set('low')">🟢 Low</button>
           </mat-menu>
 
-          <!-- View toggle: Kanban / Gantt -->
+          <!-- My Only: áp dụng cho Kanban, Gantt, Focus -->
+          <button class="my-only-btn" mat-stroked-button [class.active]="myTasksOnly()" (click)="myTasksOnly.set(!myTasksOnly())" matTooltip="Chỉ hiện task được giao cho tôi">
+            <mat-icon>person</mat-icon>
+            Chỉ của tôi
+          </button>
+
+          <!-- View toggle: Kanban / Gantt / Focus -->
           <div class="view-toggle">
             <button [class.active]="viewMode() === 'kanban'" (click)="viewMode.set('kanban')" matTooltip="Kanban">
               <mat-icon>view_kanban</mat-icon>
             </button>
             <button [class.active]="viewMode() === 'gantt'" (click)="viewMode.set('gantt')" matTooltip="Gantt">
               <mat-icon>view_timeline</mat-icon>
+            </button>
+            <button [class.active]="viewMode() === 'focus'" (click)="viewMode.set('focus')" matTooltip="Focus: Đang làm & Sắp làm">
+              <mat-icon>center_focus_strong</mat-icon>
             </button>
           </div>
 
@@ -87,11 +96,56 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
       <!-- Gantt View -->
       @if (viewMode() === 'gantt') {
         <app-gantt
-          [tasks]="filteredTasks()"
+          [tasks]="ganttTasks()"
           [projectId]="id()"
+          [taskScope]="ganttTaskScope()"
+          [filterByViewRange]="true"
           [assigneesResolver]="getAssignees.bind(this)"
+          (taskScopeChange)="ganttTaskScope.set($event)"
           (taskEdit)="openTaskDialog($event)"
         />
+      }
+
+      <!-- Focus View: Đang làm + Sắp làm -->
+      @if (viewMode() === 'focus') {
+        <div class="focus-view">
+          <div class="focus-sections">
+            <section class="focus-section">
+              <h3 class="focus-section-title"><span class="dot in_progress"></span> Đang làm</h3>
+              <div class="focus-task-list">
+                @for (task of focusTasksActive(); track task.id) {
+                  <div class="focus-task-card" (dblclick)="openTaskDialog(task)">
+                    <div class="priority-strip" [class]="'strip-' + task.priority"></div>
+                    <span class="focus-task-title">{{ task.title }}</span>
+                    @if (task.due_date) {
+                      <span class="focus-task-due">{{ task.due_date | date:'dd/MM/yyyy' }}</span>
+                    }
+                  </div>
+                }
+                @empty {
+                  <p class="focus-empty">Không có task đang làm</p>
+                }
+              </div>
+            </section>
+            <section class="focus-section">
+              <h3 class="focus-section-title"><span class="dot todo"></span> Sắp làm</h3>
+              <div class="focus-task-list">
+                @for (task of focusTasksSoon(); track task.id) {
+                  <div class="focus-task-card" (dblclick)="openTaskDialog(task)">
+                    <div class="priority-strip" [class]="'strip-' + task.priority"></div>
+                    <span class="focus-task-title">{{ task.title }}</span>
+                    @if (task.start_date) {
+                      <span class="focus-task-due">Bắt đầu: {{ task.start_date | date:'dd/MM/yyyy' }}</span>
+                    }
+                  </div>
+                }
+                @empty {
+                  <p class="focus-empty">Không có task sắp làm</p>
+                }
+              </div>
+            </section>
+          </div>
+        </div>
       }
 
       <!-- Kanban Board -->
@@ -253,7 +307,7 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
                             <div class="subtask-card-status-row" (click)="$event.stopPropagation()">
                               <select class="subtask-status-native-select" [value]="subtask.status" (change)="onSubtaskStatusChange(task, subtask, $any($event.target).value)">
                                 @for (opt of subtaskStatusOptions; track opt.status) {
-                                  <option [value]="opt.status">{{ opt.label }}</option>
+                                  <option [value]="opt.status" [selected]="opt.status === subtask.status">{{ opt.label }}</option>
                                 }
                               </select>
                             </div>
@@ -343,8 +397,26 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
     .view-toggle button { display: flex; align-items: center; justify-content: center; width: 36px; height: 32px; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: #64748b; transition: all 0.15s; }
     .view-toggle button.active { background: white; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .view-toggle mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    .my-only-btn.active { background: #eff6ff !important; color: #2563eb !important; border-color: #93c5fd !important; }
     .loading-kanban { display: flex; align-items: center; justify-content: center; height: 300px; }
     .loading-text { color: #94a3b8; font-size: 16px; }
+    .focus-view { padding: 16px; max-width: 900px; }
+    .focus-sections { display: flex; flex-direction: column; gap: 24px; }
+    .focus-section-title { font-size: 15px; font-weight: 600; color: #1e293b; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; }
+    .focus-section-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .focus-section-title .dot.in_progress { background: #3b82f6; }
+    .focus-section-title .dot.todo { background: #94a3b8; }
+    .focus-task-list { display: flex; flex-direction: column; gap: 8px; }
+    .focus-task-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; cursor: pointer; transition: box-shadow 0.15s; }
+    .focus-task-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .focus-task-card .priority-strip { width: 4px; height: 100%; min-height: 24px; border-radius: 2px; flex-shrink: 0; }
+    .focus-task-card .strip-critical { background: #dc2626; }
+    .focus-task-card .strip-high { background: #ea580c; }
+    .focus-task-card .strip-medium { background: #ca8a04; }
+    .focus-task-card .strip-low { background: #16a34a; }
+    .focus-task-title { flex: 1; font-size: 14px; color: #1e293b; min-width: 0; }
+    .focus-task-due { font-size: 12px; color: #64748b; flex-shrink: 0; }
+    .focus-empty { margin: 0; font-size: 14px; color: #94a3b8; padding: 12px 0; }
     .task-with-subtasks { display: flex; flex-direction: column; gap: 0; }
     .task-with-subtasks .task-card { margin: 0; }
     .subtask-progress { display: flex; align-items: center; gap: 4px; }
@@ -410,8 +482,14 @@ export class ProjectComponent implements OnInit, OnDestroy {
   readonly connectedTo = TASK_COLUMNS.map(c => c.status);
   readonly subtaskStatusOptions = SUBTASK_STATUS_OPTIONS;
 
-  viewMode       = signal<'kanban' | 'gantt'>('kanban');
+  viewMode       = signal<'kanban' | 'gantt' | 'focus'>('kanban');
   priorityFilter = signal<TaskPriority | null>(null);
+  /** Gantt: 'active' = chỉ Đang làm + Sắp làm; 'all' = tất cả task */
+  ganttTaskScope = signal<'all' | 'active'>('active');
+  /** Chỉ của tôi: áp dụng cho Kanban, Gantt, Focus */
+  myTasksOnly = signal(false);
+  /** Task IDs where user is in subtask assignees (loaded when myTasksOnly is on) */
+  taskIdsWithUserInSubtasks = signal<Set<string>>(new Set());
 
   /** Task IDs that are expanded to show subtask tree */
   expandedTaskIds = signal<Set<string>>(new Set());
@@ -422,6 +500,23 @@ export class ProjectComponent implements OnInit, OnDestroy {
   /** Inline add subtask title by taskId */
   newSubtaskTitles = signal<Record<string, string>>({});
 
+  constructor() {
+    effect(() => {
+      if (this.myTasksOnly() && this.id()) {
+        const uid = this.auth.userId();
+        if (uid) {
+          this.taskSvc.getTaskIdsWithUserInSubtasks(this.id(), uid).then(ids =>
+            this.taskIdsWithUserInSubtasks.set(ids)
+          );
+        } else {
+          this.taskIdsWithUserInSubtasks.set(new Set());
+        }
+      } else {
+        this.taskIdsWithUserInSubtasks.set(new Set());
+      }
+    });
+  }
+
   readonly project = computed(() =>
     this.projectSvc.projects().find(p => p.id === this.id()) ?? null
   );
@@ -430,6 +525,64 @@ export class ProjectComponent implements OnInit, OnDestroy {
     const pf = this.priorityFilter();
     return pf ? this.taskSvc.tasks().filter(t => t.priority === pf) : this.taskSvc.tasks();
   });
+
+  /** Sau khi áp dụng "Chỉ của tôi": dùng cho Kanban, Gantt, Focus. Bao gồm task assignee HOẶC subtask assignee. */
+  readonly tasksForView = computed(() => {
+    let list = this.filteredTasks();
+    if (this.myTasksOnly()) {
+      const uid = this.auth.userId();
+      if (uid) {
+        const inSubtasks = this.taskIdsWithUserInSubtasks();
+        list = list.filter(t =>
+          (t.assignees_preview ?? []).includes(uid) || inSubtasks.has(t.id)
+        );
+      }
+    }
+    return list;
+  });
+
+  /** Tasks for Gantt: khi scope 'active' chỉ giữ Đang làm (in_progress, review) + Sắp làm (todo có start_date trong 4 tuần tới). */
+  readonly ganttTasks = computed(() => {
+    const list = this.tasksForView();
+    if (this.viewMode() !== 'gantt') return list;
+    if (this.ganttTaskScope() === 'all') return list;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const fourWeeksLater = new Date(today.getTime() + 4 * 7 * 24 * 60 * 60 * 1000);
+    return list.filter(t => {
+      if (t.status === 'in_progress' || t.status === 'review') return true;
+      if (t.status === 'done') return false;
+      if (t.status === 'todo') {
+        if (!t.start_date) return true;
+        const start = this.parseTaskDate(t.start_date);
+        return start <= fourWeeksLater;
+      }
+      return false;
+    });
+  });
+
+  /** Focus view: Đang làm + Sắp làm (đã áp dụng "Chỉ của tôi" qua tasksForView). */
+  readonly focusTasks = computed(() => {
+    const list = this.tasksForView();
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const fourWeeksLater = new Date(today.getTime() + 4 * 7 * 24 * 60 * 60 * 1000);
+    return list.filter(t => {
+      if (t.status === 'in_progress' || t.status === 'review') return true;
+      if (t.status === 'todo') {
+        if (!t.start_date) return true;
+        const start = this.parseTaskDate(t.start_date);
+        return start <= fourWeeksLater;
+      }
+      return false;
+    });
+  });
+  readonly focusTasksActive = computed(() => this.focusTasks().filter(t => t.status === 'in_progress' || t.status === 'review'));
+  readonly focusTasksSoon = computed(() => this.focusTasks().filter(t => t.status === 'todo'));
+
+  private parseTaskDate(s: string | null): Date {
+    if (!s) return new Date();
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
 
   async ngOnInit(): Promise<void> {
     await this.taskSvc.loadTasks(this.id());
@@ -447,7 +600,7 @@ export class ProjectComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void { this.taskSvc.cleanup(); }
 
   getColumnTasks(status: TaskStatus): Task[] {
-    return this.filteredTasks().filter(t => t.status === status);
+    return this.tasksForView().filter(t => t.status === status);
   }
 
   /** Resolve assignee profiles from project members for display on task card */

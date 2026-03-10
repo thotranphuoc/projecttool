@@ -1,11 +1,13 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseService } from '../core/supabase.service';
+import { ErrorLogService } from '../core/error-log.service';
 import { AuthService } from '../core/auth/auth.service';
 import { Project, CreateProjectDto, ProjectMember } from '../shared/models';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectService {
   private supabase = inject(SupabaseService).client;
+  private errorLog = inject(ErrorLogService);
   private auth     = inject(AuthService);
 
   readonly projects   = signal<Project[]>([]);
@@ -18,7 +20,7 @@ export class ProjectService {
         .from('projects')
         .select('*, project_members(user_id, project_role, profiles(id, display_name, photo_url, email))')
         .order('created_at', { ascending: false });
-      if (error) console.error('loadProjects error:', error.code, error.message);
+      this.errorLog.logSupabase({ data, error }, 'loadProjects');
       this.projects.set(data ?? []);
     } catch (e) {
       console.error('loadProjects exception:', e);

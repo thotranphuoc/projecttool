@@ -1,11 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, OnInit, computed, inject, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatSortModule } from '@angular/material/sort';
+import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
@@ -81,7 +81,7 @@ export interface UserSubtaskRow {
       </div>
 
       <div class="table-card card">
-        <table mat-table [dataSource]="dataSource()" matSort (matSortChange)="onSort($event)" class="data-table">
+        <table mat-table [dataSource]="dataSource()" matSort class="data-table">
           <ng-container matColumnDef="project">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Dự án</th>
             <td mat-cell *matCellDef="let row">{{ row.projectName }}</td>
@@ -167,11 +167,13 @@ export interface UserSubtaskRow {
     th.mat-header-cell { font-weight: 700; font-size: 13px; }
   `]
 })
-export class UserSubtasksComponent implements OnInit {
+export class UserSubtasksComponent implements OnInit, AfterViewInit {
   private supabase = inject(SupabaseService).client;
   readonly auth = inject(AuthService);
   readonly projectSvc = inject(ProjectService);
   private router = inject(Router);
+
+  @ViewChild(MatSort) matSort!: MatSort;
 
   selectedProjectId = signal('');
   selectedUserId = signal('');
@@ -241,11 +243,24 @@ export class UserSubtasksComponent implements OnInit {
     ds.data = !filter ? r : r.filter(row => row.subtask.status === filter);
   }
 
-  onSort(_event: any): void {
+  ngAfterViewInit(): void {
     const ds = this.dataSource();
-    const r = [...ds.data];
-    r.sort((a, b) => b.subtask.actual_seconds - a.subtask.actual_seconds);
-    ds.data = r;
+    ds.sort = this.matSort;
+    ds.sortingDataAccessor = (row: UserSubtaskRow, col: string) => {
+      switch (col) {
+        case 'project': return row.projectName;
+        case 'member': return row.assigneeDisplay;
+        case 'task': return row.taskTitle;
+        case 'subtask': return row.subtask.title;
+        case 'status': return row.subtask.status;
+        case 'est': return row.subtask.estimate_seconds ?? 0;
+        case 'act': return row.subtask.actual_seconds ?? 0;
+        case 'created_at': return row.subtask.created_at ?? '';
+        case 'done_at': return row.subtask.status === 'done' ? (row.subtask.updated_at ?? '') : '';
+        case 'needsSupport': return row.needsSupport ? 1 : 0;
+        default: return '';
+      }
+    };
   }
 
   async load(): Promise<void> {
