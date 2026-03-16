@@ -142,7 +142,7 @@ const BSC_LABEL: Record<string, string> = {
     </div>
   `,
   styles: [`
-    .dialog-container { min-width: 560px; }
+    .dialog-container { width: min(600px, 92vw); min-width: 0; box-sizing: border-box; }
     mat-dialog-content { max-height: 70vh; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 8px 0; }
     .full-width { grid-column: 1 / -1; }

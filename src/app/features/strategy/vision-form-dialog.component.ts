@@ -37,7 +37,7 @@ import { Vision } from '../../shared/models';
     </mat-dialog-actions>
   `,
   styles: [`
-    .form-col { display: flex; flex-direction: column; gap: 14px; min-width: 360px; }
+    .form-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; width: 100%; }
     mat-form-field { width: 100%; }
   `]
 })

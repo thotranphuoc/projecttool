@@ -82,7 +82,7 @@ export interface NewGroupResult {
     </div>
   `,
   styles: [`
-    .dialog-container { min-width: 400px; }
+    .dialog-container { width: min(440px, 92vw); min-width: 0; box-sizing: border-box; }
     .full-width { width: 100%; }
     mat-dialog-content { max-height: 65vh; overflow-y: auto; }
     .section-label { margin: 12px 0 8px; font-size: 13px; font-weight: 600; color: #475569; }

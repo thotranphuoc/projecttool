@@ -40,7 +40,7 @@ export interface CompletionNoteDialogResult {
     </div>
   `,
   styles: [`
-    .dialog-container { min-width: 360px; max-width: 480px; box-sizing: border-box; }
+    .dialog-container { width: min(480px, 92vw); min-width: 0; box-sizing: border-box; }
     .hint { color: #64748b; font-size: 13px; margin: 0 0 12px 0; }
     mat-dialog-content { padding: 0 24px 16px 24px; }
     .full-width { width: 100%; min-width: 0; }

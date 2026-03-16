@@ -97,7 +97,7 @@ interface MentionMember {
     </div>
   `,
   styles: [`
-    .dialog-container { min-width: 500px; }
+    .dialog-container { width: min(540px, 92vw); min-width: 0; box-sizing: border-box; }
     mat-dialog-content { max-height: 50vh; overflow-y: auto; }
     .comments-list { display: flex; flex-direction: column; gap: 16px; padding: 8px 0; }
     .comment-item { display: flex; gap: 10px; }

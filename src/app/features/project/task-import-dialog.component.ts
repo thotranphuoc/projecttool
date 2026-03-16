@@ -112,7 +112,7 @@ export interface TaskImportDialogData {
     </div>
   `,
   styles: [`
-    .dialog-container { min-width: 840px; max-width: 960px; box-sizing: border-box; }
+    .dialog-container { width: min(960px, 92vw); min-width: 0; box-sizing: border-box; }
     mat-dialog-content {
       padding: 12px 24px 16px 24px;
       max-height: 70vh;
@@ -123,6 +123,9 @@ export interface TaskImportDialogData {
       grid-template-columns: 1.1fr 1.5fr;
       gap: 16px;
       align-items: flex-start;
+    }
+    @media (max-width: 700px) {
+      .content-grid { grid-template-columns: 1fr; }
     }
     .left-pane, .right-pane {
       min-width: 0;

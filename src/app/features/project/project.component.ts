@@ -49,10 +49,10 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
             <p class="text-muted text-sm">{{ project()?.client_name }}</p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="header-actions">
           <!-- Filter by priority -->
           <button mat-stroked-button [matMenuTriggerFor]="filterMenu">
-            <mat-icon>filter_list</mat-icon> Lọc
+            <mat-icon>filter_list</mat-icon> <span class="btn-label">Lọc</span>
             @if (priorityFilter()) { <span class="filter-badge">1</span> }
           </button>
           <mat-menu #filterMenu>
@@ -66,7 +66,7 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
           <!-- My Only: áp dụng cho Kanban, Gantt, Focus -->
           <button class="my-only-btn" mat-stroked-button [class.active]="myTasksOnly()" (click)="myTasksOnly.set(!myTasksOnly())" matTooltip="Chỉ hiện task được giao cho tôi">
             <mat-icon>person</mat-icon>
-            Chỉ của tôi
+            <span class="btn-label">Chỉ của tôi</span>
           </button>
 
           <!-- View toggle: Kanban / Gantt / Focus -->
@@ -82,9 +82,9 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
             </button>
           </div>
 
-          <button mat-stroked-button (click)="openImportDialog()" matTooltip="Import Task từ JSON">
+          <button mat-stroked-button (click)="openImportDialog()" matTooltip="Import Task từ JSON" class="import-btn">
             <mat-icon>upload_file</mat-icon>
-            Import
+            <span class="btn-label">Import</span>
           </button>
 
           <button mat-flat-button color="primary" (click)="openTaskDialog()">
@@ -266,7 +266,7 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
                     @if (isTaskExpanded(task.id)) {
                       <div class="subtask-tree">
                         @for (subtask of getSubtasksForTask(task.id); track subtask.id) {
-                          <div class="subtask-card" [class.done]="subtask.status === 'done'" (click)="$event.stopPropagation()" (dblclick)="openSubtaskEditDialog(task, subtask); $event.stopPropagation()">
+                          <div class="subtask-card" [class.done]="subtask.status === 'done'" (click)="openSubtaskEditDialog(task, subtask); $event.stopPropagation()">
                             <div class="subtask-card-main">
                               <div class="subtask-card-body">
                                 <span class="subtask-card-title">{{ subtask.title }}</span>
@@ -398,6 +398,16 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
     .view-toggle button.active { background: white; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .view-toggle mat-icon { font-size: 20px; width: 20px; height: 20px; }
     .my-only-btn.active { background: #eff6ff !important; color: #2563eb !important; border-color: #93c5fd !important; }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    @media (max-width: 768px) {
+      .page-header { flex-wrap: wrap; gap: 8px; }
+      .header-actions { gap: 6px; }
+      .btn-label { display: none; }
+      .import-btn { display: none; }
+      .kanban-column { min-width: 260px; width: 260px; }
+      .add-subtask-inline-btn { width: 36px !important; height: 36px !important; min-width: 36px !important; min-height: 36px !important; }
+      .subtask-status-native-select { height: 30px; font-size: 12px; }
+    }
     .loading-kanban { display: flex; align-items: center; justify-content: center; height: 300px; }
     .loading-text { color: #94a3b8; font-size: 16px; }
     .focus-view { padding: 16px; max-width: 900px; }
@@ -434,7 +444,9 @@ import { TaskImportDialogComponent } from './task-import-dialog.component';
     .subtask-tree { contain: layout; min-height: 4px; }
     .task-add-subtask-row { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-top: 1px solid #e2e8f0; background: #fafafa; margin: 10px -1px -1px -1px; border-radius: 0 0 10px 10px; }
     .subtask-tree { margin-left: 24px; margin-top: 8px; padding-left: 12px; border-left: 2px solid #e2e8f0; display: flex; flex-direction: column; gap: 6px; }
-    .subtask-card { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); cursor: pointer; }
+    .subtask-card { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+    .subtask-card:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .subtask-card:active { background: #e8edf5; }
     .subtask-card.done { opacity: 0.7; }
     .subtask-card.done .subtask-card-title { text-decoration: line-through; }
     .subtask-card-main { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
@@ -711,7 +723,7 @@ export class ProjectComponent implements OnInit, OnDestroy {
 
   openCompletionNoteForSubtask(task: Task, subtask: Subtask): void {
     const data: CompletionNoteDialogData = { type: 'subtask', title: subtask.title };
-    this.dialog.open(CompletionNoteDialogComponent, { width: '420px', data })
+    this.dialog.open(CompletionNoteDialogComponent, { width: '420px', maxWidth: '95vw', data })
       .afterClosed()
       .subscribe(async (result: CompletionNoteDialogResult | undefined) => {
         if (result === undefined) return;
@@ -870,7 +882,7 @@ export class ProjectComponent implements OnInit, OnDestroy {
 
       if (targetStatus === 'done') {
         const data: CompletionNoteDialogData = { type: 'task', title: task.title };
-        this.dialog.open(CompletionNoteDialogComponent, { width: '420px', data })
+        this.dialog.open(CompletionNoteDialogComponent, { width: '420px', maxWidth: '95vw', data })
           .afterClosed()
           .subscribe((result: CompletionNoteDialogResult | undefined) => {
             if (result === undefined) return;
@@ -900,14 +912,16 @@ export class ProjectComponent implements OnInit, OnDestroy {
   async openTaskDialog(task: Task | null = null, defaultStatus?: TaskStatus): Promise<void> {
     const { TaskDialogComponent } = await import('./task-dialog.component');
     this.dialog.open(TaskDialogComponent, {
-      width: '560px',
+      width: '560px', maxWidth: '95vw',
+      enterAnimationDuration: '100ms', exitAnimationDuration: '80ms',
       data: { task, projectId: this.id(), defaultStatus }
     });
   }
 
-  async openSubtaskEditDialog(task: Task, subtask: Subtask): Promise<void> {
-    const membersRaw = await this.projectSvc.getMembers(this.id());
-    const members: SubtaskEditDialogData['members'] = (membersRaw as any[]).map((m: any) => {
+  openSubtaskEditDialog(task: Task, subtask: Subtask): void {
+    const proj = this.project();
+    const membersRaw = (proj as any)?.project_members as Array<{ user_id: string; profiles?: { display_name: string | null; email: string } }> | undefined ?? [];
+    const members: SubtaskEditDialogData['members'] = membersRaw.map((m: any) => {
       const p = m.profiles ?? m.profile;
       return {
         user_id: m.user_id,
@@ -917,7 +931,7 @@ export class ProjectComponent implements OnInit, OnDestroy {
     });
     const canEdit = subtask.status !== 'done' || this.canEditDoneSubtask(this.id());
     const data: SubtaskEditDialogData = { task, projectId: this.id(), subtask, members, canEdit };
-    this.dialog.open(SubtaskEditDialogComponent, { width: '400px', data })
+    this.dialog.open(SubtaskEditDialogComponent, { width: '400px', maxWidth: '95vw', enterAnimationDuration: '100ms', exitAnimationDuration: '80ms', data })
       .afterClosed()
       .subscribe((result: { updated?: boolean; deleted?: boolean; subtask?: Subtask } | undefined) => {
         if (!result?.subtask) return;
@@ -947,14 +961,14 @@ export class ProjectComponent implements OnInit, OnDestroy {
   async openCommentDialog(task: Task): Promise<void> {
     const { CommentDialogComponent } = await import('./comment-dialog.component');
     this.dialog.open(CommentDialogComponent, {
-      width: '520px', data: { task, projectId: this.id() }
+      width: '520px', maxWidth: '95vw', data: { task, projectId: this.id() }
     });
   }
 
   openImportDialog(): void {
     if (!this.id()) return;
     this.dialog.open(TaskImportDialogComponent, {
-      width: '880px',
+      width: '880px', maxWidth: '95vw',
       data: { projectId: this.id() }
     }).afterClosed().subscribe((result: { imported?: number; failed?: number } | undefined) => {
       if (result?.imported && result.imported > 0) {

@@ -49,7 +49,7 @@ interface UserActivity {
     <div class="team-page">
       <div class="page-header">
         <h1 class="page-title">Team Activity</h1>
-        <mat-form-field appearance="outline" style="width:220px">
+        <mat-form-field appearance="outline" class="project-filter-field">
           <mat-label>Project</mat-label>
           <mat-select [ngModel]="selectedProjectId()" (ngModelChange)="selectedProjectId.set($event); load()">
             <mat-option value="">Tất cả</mat-option>
@@ -113,24 +113,24 @@ interface UserActivity {
           </ng-container>
 
           <ng-container matColumnDef="tasks">
-            <th mat-header-cell *matHeaderCellDef>Tasks</th>
-            <td mat-cell *matCellDef="let row">
+            <th mat-header-cell *matHeaderCellDef class="hide-mobile">Tasks</th>
+            <td mat-cell *matCellDef="let row" class="hide-mobile">
               <span class="font-semibold">{{ row.doneTasks }}</span>
               <span class="text-muted">/{{ row.totalTasks }}</span>
             </td>
           </ng-container>
 
           <ng-container matColumnDef="subtasks">
-            <th mat-header-cell *matHeaderCellDef>Subtasks</th>
-            <td mat-cell *matCellDef="let row">
+            <th mat-header-cell *matHeaderCellDef class="hide-mobile">Subtasks</th>
+            <td mat-cell *matCellDef="let row" class="hide-mobile">
               <span class="font-semibold">{{ row.doneSubtasks }}</span>
               <span class="text-muted">/{{ row.totalSubtasks }}</span>
             </td>
           </ng-container>
 
           <ng-container matColumnDef="totalTime">
-            <th mat-header-cell *matHeaderCellDef>Tổng thời gian</th>
-            <td mat-cell *matCellDef="let row">{{ row.totalSeconds | secondsToHms }}</td>
+            <th mat-header-cell *matHeaderCellDef class="hide-mobile">Tổng thời gian</th>
+            <td mat-cell *matCellDef="let row" class="hide-mobile">{{ row.totalSeconds | secondsToHms }}</td>
           </ng-container>
 
           <ng-container matColumnDef="todayTime">
@@ -153,8 +153,8 @@ interface UserActivity {
   `,
   styles: [`
     .team-page { max-width: 1100px; margin: 0 auto; }
-    .table-card { overflow: hidden; }
-    .activity-table { width: 100%; }
+    .table-card { overflow-x: auto; }
+    .activity-table { width: 100%; min-width: 640px; }
     .user-cell { display: flex; align-items: center; gap: 10px; }
     .row-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
     .row-avatar-initial { display: inline-flex; align-items: center; justify-content: center; background: #e2e8f0; color: #475569; font-size: 14px; font-weight: 600; }
@@ -168,6 +168,12 @@ interface UserActivity {
     .current-work-link { color: #3b82f6; text-decoration: none; font-weight: 600; font-size: 13px; }
     .current-work-link:hover { text-decoration: underline; }
     .current-work-detail { font-size: 12px; color: #64748b; }
+    .project-filter-field { width: 220px; }
+    @media (max-width: 768px) {
+      .project-filter-field { width: 100%; }
+      .hide-mobile { display: none !important; }
+      .activity-table { min-width: 360px; }
+    }
   `]
 })
 export class TeamActivityComponent implements OnInit, OnDestroy {

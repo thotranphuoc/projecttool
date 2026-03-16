@@ -148,7 +148,7 @@ type KrDraft = Partial<KeyResult> & { _localId: number };
     </div>
   `,
   styles: [`
-    .dialog-container { min-width: 580px; }
+    .dialog-container { width: min(620px, 92vw); min-width: 0; box-sizing: border-box; }
     mat-dialog-content { max-height: 72vh; overflow-y: auto; }
     .form-col { display: flex; flex-direction: column; gap: 14px; padding: 8px 0; }
     mat-form-field { width: 100%; }

@@ -90,7 +90,7 @@ import { Project, ProjectMember, Profile } from '../../shared/models';
     </div>
   `,
   styles: [`
-    .dialog-container { min-width: 480px; }
+    .dialog-container { width: min(520px, 92vw); min-width: 0; box-sizing: border-box; }
     mat-dialog-content { max-height: 65vh; }
     .add-section { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
     .search-results { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }

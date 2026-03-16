@@ -1,6 +1,6 @@
-import { ApplicationRef, ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import { ApplicationRef, ChangeDetectionStrategy, Component, computed, effect, inject, signal, ViewChild } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +9,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { AuthService } from './core/auth/auth.service';
 import { NotificationService } from './services/notification.service';
 import { TimerService } from './services/timer.service';
@@ -39,7 +40,7 @@ import { APP_SLOGAN, NAV_ITEMS, type NavItem } from './app.constants';
       <router-outlet />
     } @else {
       <mat-sidenav-container class="app-container">
-        <mat-sidenav #sidenav mode="side" opened class="sidenav">
+        <mat-sidenav #sidenav [mode]="isMobile() ? 'over' : 'side'" [opened]="!isMobile()" class="sidenav">
           <!-- Logo -->
           <div class="sidenav-logo">
             <mat-icon class="logo-icon">sync_alt</mat-icon>
@@ -283,13 +284,22 @@ import { APP_SLOGAN, NAV_ITEMS, type NavItem } from './app.constants';
     .timer-task-link {
       flex: 1; text-align: left; background: none; border: none; color: #94a3b8;
       font-size: 14px; cursor: pointer; padding: 4px 0;
-      transition: color 0.2s;
+      transition: color 0.2s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .timer-task-link:hover { color: white; text-decoration: underline; }
     .timer-project { color: #64748b; font-size: 13px; }
+
+    @media (max-width: 768px) {
+      .sidenav { width: 240px; }
+      .page-content { padding: 12px; }
+      .timer-bar { padding: 8px 12px; gap: 8px; }
+      .timer-bar mat-icon { display: none; }
+    }
   `]
 })
 export class AppComponent {
+  @ViewChild('sidenav') private sidenav?: MatSidenav;
+
   readonly slogan = APP_SLOGAN;
   readonly auth      = inject(AuthService);
   readonly notifSvc  = inject(NotificationService);
@@ -300,6 +310,10 @@ export class AppComponent {
   private appSettingsSvc = inject(AppSettingsService);
   private router     = inject(Router);
   private appRef     = inject(ApplicationRef);
+  private bp         = inject(BreakpointObserver);
+
+  /** True when viewport ≤ 768 px */
+  readonly isMobile = signal(false);
 
   avatarError = false;
 
@@ -323,13 +337,13 @@ export class AppComponent {
       });
       const { SubtaskEditDialogComponent } = await import('./features/project/subtask-edit-dialog.component');
       this.dialog.open(SubtaskEditDialogComponent, {
-        width: '400px',
+        width: '400px', maxWidth: '95vw',
         data: { task, projectId: timer.projectId, subtask, members }
       });
     } else {
       const { TaskDialogComponent } = await import('./features/project/task-dialog.component');
       this.dialog.open(TaskDialogComponent, {
-        width: '560px',
+        width: '560px', maxWidth: '95vw',
         data: { projectId: timer.projectId, task }
       });
     }
@@ -354,10 +368,18 @@ export class AppComponent {
       }
     });
 
+    // Track mobile breakpoint
+    this.bp.observe([Breakpoints.XSmall, '(max-width: 768px)'])
+      .subscribe(state => { this.isMobile.set(state.matches); this.appRef.tick(); });
+
     // Zoneless: trigger change detection after navigation so routed components render
+    // On mobile: also close the drawer after navigation
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe(() => this.appRef.tick());
+      .subscribe(() => {
+        if (this.isMobile()) this.sidenav?.close();
+        this.appRef.tick();
+      });
   }
 
   readonly isManagerOfAnyProject = computed(() => {

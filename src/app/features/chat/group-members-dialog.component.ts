@@ -118,7 +118,7 @@ export interface GroupMemberRow {
     </div>
   `,
   styles: [`
-    .dialog-container { min-width: 420px; }
+    .dialog-container { width: min(460px, 92vw); min-width: 0; box-sizing: border-box; }
     mat-dialog-content { max-height: 60vh; overflow-y: auto; padding-top: 8px; }
     .description-section { margin-bottom: 20px; }
     .description-row { display: flex; align-items: flex-start; gap: 8px; }

@@ -130,6 +130,58 @@ html, body {
 .mdc-text-field--filled:not(.mdc-text-field--disabled) { background: #f8fafc !important; }
 .mat-mdc-form-field-subscript-wrapper { display: none; }
 
+/* Dialogs: never overflow the viewport on mobile */
+.mat-mdc-dialog-panel,
+.cdk-overlay-pane.mat-mdc-dialog-panel {
+  max-width: min(95vw, 95dvw) !important;
+}
+
+@media (max-width: 768px) {
+  /* Force all dialog containers to respect the viewport */
+  .cdk-overlay-pane .dialog-container,
+  .mat-mdc-dialog-surface .dialog-container,
+  .dialog-container {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+  /* Stack two-column form grids into single column */
+  .cdk-overlay-pane .row-2,
+  .dialog-container .row-2 {
+    grid-template-columns: 1fr !important;
+  }
+  /* Ensure form-col fills available width */
+  .cdk-overlay-pane .form-col,
+  .dialog-container .form-col {
+    min-width: 0 !important;
+    width: 100%;
+  }
+}
+
+/* ────── Mobile-first global layout ────── */
+@media (max-width: 768px) {
+  /* Reduce page padding on small screens */
+  .page-content {
+    padding: 12px !important;
+  }
+  /* Page headers: stack title + action on small screens */
+  .page-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  /* Tables: always allow horizontal scroll */
+  .table-card {
+    overflow-x: auto !important;
+  }
+  /* Timer bar: compact on mobile */
+  .timer-bar {
+    padding: 8px 12px !important;
+    gap: 8px !important;
+    font-size: 13px;
+  }
+}
+
 /* Notif menu */
 .notif-menu .mat-mdc-menu-panel { max-width: 360px; width: 360px; }
 

@@ -145,8 +145,8 @@ import { Project } from '../../shared/models';
     }
     .search-icon { color: #94a3b8; }
     .search-input { border: none; outline: none; flex: 1; font-size: 14px; background: transparent; }
-    .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-    .loading-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+    .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 20px; }
+    .loading-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 20px; }
     .skeleton-card { height: 200px; border-radius: 12px; background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); animation: shimmer 1.5s infinite; }
     @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
     .project-card { padding: 20px; display: flex; flex-direction: column; gap: 16px; transition: transform 0.2s, box-shadow 0.2s; }
@@ -220,19 +220,19 @@ export class DashboardComponent implements OnInit {
 
   async openCreateDialog(): Promise<void> {
     const { ProjectDialogComponent } = await import('./project-dialog.component');
-    const ref = this.dialog.open(ProjectDialogComponent, { width: '600px', data: { project: null } });
+    const ref = this.dialog.open(ProjectDialogComponent, { width: '600px', maxWidth: '95vw', data: { project: null } });
     ref.afterClosed().subscribe(result => { if (result) this.projectSvc.loadProjects(); });
   }
 
   async openEditDialog(project: Project): Promise<void> {
     const { ProjectDialogComponent } = await import('./project-dialog.component');
-    const ref = this.dialog.open(ProjectDialogComponent, { width: '600px', data: { project } });
+    const ref = this.dialog.open(ProjectDialogComponent, { width: '600px', maxWidth: '95vw', data: { project } });
     ref.afterClosed().subscribe(result => { if (result) this.projectSvc.loadProjects(); });
   }
 
   async openMembersDialog(project: Project): Promise<void> {
     const { ProjectMembersDialogComponent } = await import('./project-members-dialog.component');
-    this.dialog.open(ProjectMembersDialogComponent, { width: '500px', data: { project } });
+    this.dialog.open(ProjectMembersDialogComponent, { width: '500px', maxWidth: '95vw', data: { project } });
   }
 
   async deleteProject(project: Project): Promise<void> {

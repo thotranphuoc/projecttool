@@ -68,7 +68,7 @@ export interface NewChatUserPickerData {
     </div>
   `,
   styles: [`
-    .dialog-container { min-width: 400px; }
+    .dialog-container { width: min(440px, 92vw); min-width: 0; box-sizing: border-box; }
     .full-width { width: 100%; }
     mat-dialog-content { max-height: 60vh; overflow-y: auto; }
     .user-list-item { cursor: pointer; }

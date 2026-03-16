@@ -29,7 +29,7 @@ import { GroupMembersDialogComponent } from './group-members-dialog.component';
     MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatTooltipModule, MatMenuModule
   ],
   template: `
-    <div class="chat-layout">
+    <div class="chat-layout" [class.panel-open]="activeConvId() || activeGroupId()">
       <!-- Sidebar: conversations + groups -->
       <div class="chat-sidebar">
         <div class="sidebar-header">
@@ -92,6 +92,10 @@ import { GroupMembersDialogComponent } from './group-members-dialog.component';
         } @else {
           <!-- Chat header -->
           <div class="chat-header">
+            <!-- Back button: mobile only -->
+            <button mat-icon-button class="back-btn" (click)="activeConvId.set(null); activeGroupId.set(null)" aria-label="Quay lại">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
             <div class="chat-header-avatar">{{ initials(activeTitle()) }}</div>
             <div class="chat-header-info">
               <h4>{{ activeTitle() }}</h4>
@@ -175,7 +179,7 @@ import { GroupMembersDialogComponent } from './group-members-dialog.component';
   `,
   styles: [`
     .chat-layout { display: flex; height: calc(100vh - 90px); background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
-    .chat-sidebar { width: 300px; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+    .chat-sidebar { width: 300px; min-width: 300px; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
     .sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid #e2e8f0; }
     .sidebar-header h3 { margin: 0; font-weight: 700; }
     .header-actions { display: flex; gap: 4px; }
@@ -215,7 +219,19 @@ import { GroupMembersDialogComponent } from './group-members-dialog.component';
     .file-attachment { display: flex; align-items: center; gap: 4px; font-size: 13px; color: inherit; text-decoration: underline; }
     .msg-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
     .msg-meta span { font-size: 11px; opacity: 0.7; }
-    .msg-action { width: 20px !important; height: 20px !important; line-height: 20px !important; }
+    .msg-action { width: 32px !important; height: 32px !important; line-height: 32px !important; }
+    .back-btn { display: none; flex-shrink: 0; }
+    @media (max-width: 768px) {
+      .chat-layout { height: calc(100dvh - 80px); border-radius: 0; border-left: 0; border-right: 0; }
+      .chat-sidebar { width: 100%; min-width: 0; border-right: none; }
+      /* When a conversation is open: hide sidebar, show chat window full-width */
+      .chat-layout.panel-open .chat-sidebar { display: none; }
+      .chat-layout.panel-open .chat-window { display: flex; }
+      /* When no conversation: show sidebar, hide chat window */
+      .chat-layout:not(.panel-open) .chat-window { display: none; }
+      .back-btn { display: inline-flex; }
+      .message-bubble { max-width: 85%; }
+    }
     .message-input-area { display: flex; align-items: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid #e2e8f0; }
     .attach-btn { display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b; padding: 8px; border-radius: 50%; }
     .attach-btn:hover { background: #f1f5f9; }

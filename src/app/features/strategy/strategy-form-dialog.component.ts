@@ -73,8 +73,9 @@ import { ProjectService } from '../../services/project.service';
     </mat-dialog-actions>
   `,
   styles: [`
-    .form-col { display: flex; flex-direction: column; gap: 14px; min-width: 400px; }
+    .form-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; width: 100%; }
     .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 600px) { .row-2 { grid-template-columns: 1fr; } }
     mat-form-field { width: 100%; }
   `]
 })

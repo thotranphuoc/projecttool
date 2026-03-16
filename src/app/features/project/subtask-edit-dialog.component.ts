@@ -77,7 +77,7 @@ export interface SubtaskEditDialogData {
     </div>
   `,
   styles: [`
-    .dialog-container { min-width: 380px; max-width: 420px; box-sizing: border-box; }
+    .dialog-container { width: min(420px, 92vw); max-width: 420px; min-width: 0; box-sizing: border-box; }
     mat-dialog-content {
       padding: 12px 24px 16px 24px;
       max-height: 70vh;
@@ -101,6 +101,7 @@ export interface SubtaskEditDialogData {
     .est-width { max-width: 120px; }
     mat-form-field { display: block; }
     .spacer { flex: 1; }
+    @media (max-width: 480px) { .row-2 { grid-template-columns: 1fr; } }
   `]
 })
 export class SubtaskEditDialogComponent {
