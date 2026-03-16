@@ -3,14 +3,16 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { ProjectService } from '../../services/project.service';
 
-export const authGuard: CanActivateFn = (route) => {
+export const authGuard: CanActivateFn = async (route) => {
   const auth   = inject(AuthService);
   const router = inject(Router);
 
-  if (auth.isLoading()) {
-    // Session not yet restored — allow, component should handle loading state
-    return true;
-  }
+  // Wait for auth initialization (getSession + loadProfile) to complete before
+  // activating any component. Without this, components loaded during the initial
+  // Supabase session setup caused the first database query to hang indefinitely
+  // because the Supabase JS client serializes internal getSession() calls.
+  await auth.ready;
+
   if (auth.isAuthenticated()) return true;
 
   const returnUrl = route.url.map(s => s.path).join('/');

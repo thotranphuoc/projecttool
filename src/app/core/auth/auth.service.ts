@@ -19,11 +19,16 @@ export class AuthService {
   readonly isAdmin         = computed(() => this.systemRole() === 'admin');
   readonly isDirector      = computed(() => ['admin', 'director'].includes(this.systemRole()));
 
+  /** Resolves once auth initialization (getSession + loadProfile) is complete. */
+  private _readyResolve!: () => void;
+  readonly ready: Promise<void> = new Promise(resolve => { this._readyResolve = resolve; });
+
   constructor() {
     this.initAuth();
   }
 
   private async initAuth(): Promise<void> {
+    try {
     // Step 1: Get current session synchronously from storage
     const { data: { session }, error: sessErr } = await this.supabase.auth.getSession();
     if (sessErr) console.error('getSession error:', sessErr.message);
@@ -33,6 +38,10 @@ export class AuthService {
       await this.loadProfile(session.user.id);
     } else {
       this.isLoading.set(false);
+    }
+    } finally {
+      // Signal that auth init is complete regardless of success/failure
+      this._readyResolve();
     }
 
     // Step 2: Subscribe to future auth changes; skip INITIAL_SESSION (handled above)

@@ -16,14 +16,19 @@ export class TaskService {
 
   async loadTasks(projectId: string): Promise<void> {
     this.isLoading.set(true);
-    const { data, error } = await this.supabase
-      .from('tasks')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: true });
-    this.errorLog.logSupabase({ data, error }, 'loadTasks', { projectId });
-    this.tasks.set(data ?? []);
-    this.isLoading.set(false);
+    try {
+      const { data, error } = await this.supabase
+        .from('tasks')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: true });
+      this.errorLog.logSupabase({ data, error }, 'loadTasks', { projectId });
+      this.tasks.set(data ?? []);
+      this.isLoading.set(false);
+    } catch (e: any) {
+      this.isLoading.set(false);
+      throw e;
+    }
     this.subscribeRealtime(projectId);
     await this.loadCommentCounts(projectId);
   }
