@@ -60,6 +60,11 @@ export class ProjectService {
 
   async updateProject(id: string, updates: Partial<CreateProjectDto>): Promise<void> {
     await this.supabase.from('projects').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
+    // If PM changed, ensure the new PM is in project_members (upsert to avoid duplicate error)
+    if (updates.pm_id) {
+      await this.supabase.from('project_members')
+        .upsert({ project_id: id, user_id: updates.pm_id, project_role: 'manager' }, { onConflict: 'project_id,user_id' });
+    }
     await this.loadProjects();
   }
 
