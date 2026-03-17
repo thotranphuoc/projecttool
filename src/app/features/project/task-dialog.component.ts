@@ -16,7 +16,6 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { TaskService } from '../../services/task.service';
-import { UserService } from '../../services/user.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ProjectService } from '../../services/project.service';
 import { ObjectiveService } from '../../services/objective.service';
@@ -301,7 +300,6 @@ export class TaskDialogComponent implements OnInit {
   readonly data     = inject(MAT_DIALOG_DATA) as { task: Task | null; projectId: string; defaultStatus?: TaskStatus };
   private dialogRef = inject(MatDialogRef<TaskDialogComponent>);
   private taskSvc   = inject(TaskService);
-  private userSvc   = inject(UserService);
   private auth      = inject(AuthService);
   private projectSvc = inject(ProjectService);
   private objectiveSvc = inject(ObjectiveService);
@@ -374,7 +372,23 @@ export class TaskDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.userSvc.loadAll().then(() => this.users.set(this.userSvc.users()));
+    const proj = this.projectSvc.projects().find(p => p.id === this.data.projectId);
+    const membersRaw = (proj as any)?.project_members as Array<{ user_id: string; profiles?: any }> ?? [];
+    this.users.set(
+      membersRaw
+        .filter((m: any) => m.profiles)
+        .map((m: any) => ({
+          id: m.user_id,
+          email: m.profiles?.email ?? null,
+          display_name: m.profiles?.display_name ?? null,
+          photo_url: m.profiles?.photo_url ?? null,
+          system_role: m.profiles?.system_role ?? 'user',
+          active_timer: null,
+          created_at: '',
+          updated_at: ''
+        } as Profile))
+        .sort((a, b) => (a.display_name || a.email || '').localeCompare(b.display_name || b.email || ''))
+    );
     this.objectiveSvc.loadAllKeyResults().then(() => {
       const krs = this.objectiveSvc.allKeyResults() as any[];
       this.krOptions.set(krs.map(kr => ({

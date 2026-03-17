@@ -921,14 +921,16 @@ export class ProjectComponent implements OnInit, OnDestroy {
   openSubtaskEditDialog(task: Task, subtask: Subtask): void {
     const proj = this.project();
     const membersRaw = (proj as any)?.project_members as Array<{ user_id: string; profiles?: { display_name: string | null; email: string } }> | undefined ?? [];
-    const members: SubtaskEditDialogData['members'] = membersRaw.map((m: any) => {
-      const p = m.profiles ?? m.profile;
-      return {
-        user_id: m.user_id,
-        display_name: p?.display_name ?? p?.email ?? 'User',
-        email: p?.email
-      };
-    });
+    const members: SubtaskEditDialogData['members'] = membersRaw
+      .map((m: any) => {
+        const p = m.profiles ?? m.profile;
+        return {
+          user_id: m.user_id,
+          display_name: p?.display_name ?? p?.email ?? 'User',
+          email: p?.email
+        };
+      })
+      .sort((a, b) => (a.display_name || a.email || '').localeCompare(b.display_name || b.email || ''));
     const canEdit = subtask.status !== 'done' || this.canEditDoneSubtask(this.id());
     const data: SubtaskEditDialogData = { task, projectId: this.id(), subtask, members, canEdit };
     this.dialog.open(SubtaskEditDialogComponent, { width: '400px', maxWidth: '95vw', enterAnimationDuration: '100ms', exitAnimationDuration: '80ms', data })
